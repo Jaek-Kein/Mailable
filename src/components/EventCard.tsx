@@ -7,7 +7,7 @@ import { CSSProperties } from "react";
 export type EventStatus = "scheduled" | "closed";
 
 export interface EventCardProps {
-    id?: string | number;
+    id: string;
     title: string;
     date: string | Date;
     sheetUrl: string;
@@ -139,6 +139,7 @@ function toneByStatus(
  * - 카드 전체 클릭 / 더보기 버튼 옵셔널
  */
 export default function EventCard({
+    id,
     title,
     date,
     place,
@@ -153,7 +154,7 @@ export default function EventCard({
 
     const onClick = async () => {
         if (loading) return;
-        await ingestFromSheetUrl(sheetUrl);
+        await ingestFromSheetUrl( sheetUrl, id);
     };
     return (
         <Wrap className={className} style={style}>

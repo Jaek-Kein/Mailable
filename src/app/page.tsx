@@ -70,7 +70,7 @@ export default function Page() {
 
                 <Grid3 aria-label="이벤트 카드">
                         {events.map((ev) => (
-                            <EventCard key={ev.id} title={ev.title} date={ev.date} place={ev.place} sheetUrl={ev.sheetUrl}/>
+                            <EventCard key={ev.id} title={ev.title} date={ev.date} place={ev.place} sheetUrl={ev.sheetUrl} id={ev.id}/>
                         ))}
                 </Grid3>
             </Section>
