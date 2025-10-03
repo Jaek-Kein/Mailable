@@ -1,95 +1,89 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+"use client";
 
-export default function Home() {
-  return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol>
-          <li>
-            Get started by editing <code>src/app/page.tsx</code>.
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+import styled from "@emotion/styled";
+import StatCard from "@/components/StatCard";
+import EventCard from "@/components/EventCard";
 
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+const Main = styled.main`
+    max-width: 1200px;
+    margin: 1.25rem auto;
+    padding: 0 1rem;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+`;
+
+const Section = styled.section`
+    display: grid;
+    gap: 1rem;
+`;
+
+const Grid3 = styled.div`
+    display: grid;
+    gap: 1.5rem;
+    width: 100%;
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+    @media (min-width: 768px) {
+        grid-template-columns: repeat(3, 1fr);
+    }
+`;
+
+export default function Page() {
+    return (
+        <Main>
+            {/* 좌측 메인 콘텐츠 */}
+            <Section aria-labelledby="dashboard-heading">
+                <header>
+                    <h1
+                        id="dashboard-heading"
+                        style={{ fontSize: "1.35rem", margin: 0 }}
+                    >
+                        대시보드
+                    </h1>
+                    <p
+                        style={{
+                            color: "#64748b",
+                            margin: "0.25rem 0 0.75rem",
+                        }}
+                    >
+                        행사·메일 발송 현황을 한눈에 확인하세요.
+                    </p>
+                </header>
+
+                <Grid3 aria-label="핵심 지표">
+                    <StatCard label="진행 중 행사" value={3} />
+                    <StatCard label="미확인" value={12} tone="danger" />
+                    <StatCard label="확인 완료" value={128} tone="success" />
+                </Grid3>
+
+                <header>
+                    <h1
+                        id="dashboard-heading"
+                        style={{ fontSize: "1.35rem", margin: 0 }}
+                    >
+                        행사 목록
+                    </h1>
+                </header>
+
+                <Grid3 aria-label="이벤트 카드">
+                    <EventCard
+                        title="유사쿠라"
+                        date="2025.02.11"
+                        status="closed"
+                    ></EventCard>
+                    <EventCard title="유사쿠라" date="2025.02.11"></EventCard>
+                    <EventCard title="유사쿠라" date="2025.02.11"></EventCard>
+                    <EventCard title="유사쿠라" date="2025.02.11"></EventCard>
+                    <EventCard title="유사쿠라" date="2025.02.11"></EventCard>
+                    <EventCard title="유사쿠라" date="2025.02.11"></EventCard>
+                    <EventCard title="유사쿠라" date="2025.02.11"></EventCard>
+                    <EventCard title="유사쿠라" date="2025.02.11"></EventCard>
+                    <EventCard title="유사쿠라" date="2025.02.11"></EventCard>
+                    <EventCard title="유사쿠라" date="2025.02.11"></EventCard>
+                    <EventCard title="유사쿠라" date="2025.02.11"></EventCard>
+                    <EventCard title="유사쿠라" date="2025.02.11"></EventCard>
+                </Grid3>
+            </Section>
+        </Main>
+    );
 }
