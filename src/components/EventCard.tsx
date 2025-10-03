@@ -1,5 +1,6 @@
 "use client";
 
+import { useSheetStore } from "@/store/useSheetsStore";
 import styled from "@emotion/styled";
 import { CSSProperties } from "react";
 
@@ -9,6 +10,7 @@ export interface EventCardProps {
     id?: string | number;
     title: string;
     date: string | Date;
+    sheetUrl: string;
     place?: string;
     posterUrl?: string | null;
     status?: EventStatus;
@@ -142,11 +144,17 @@ export default function EventCard({
     place,
     posterUrl,
     status,
-    onClick,
     onMoreClick,
     className,
     style,
+    sheetUrl,
 }: EventCardProps) {
+    const { ingestFromSheetUrl, loading } = useSheetStore();
+
+    const onClick = async () => {
+        if (loading) return;
+        await ingestFromSheetUrl(sheetUrl);
+    };
     return (
         <Wrap className={className} style={style}>
             {onMoreClick && (

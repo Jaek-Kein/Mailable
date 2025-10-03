@@ -3,6 +3,7 @@
 import styled from "@emotion/styled";
 import StatCard from "@/components/StatCard";
 import EventCard from "@/components/EventCard";
+import { useEventStore } from "@/store/useEventStore";
 
 const Main = styled.main`
     max-width: 1200px;
@@ -29,6 +30,8 @@ const Grid3 = styled.div`
 `;
 
 export default function Page() {
+    const events = useEventStore((s) => s.events);
+
     return (
         <Main>
             {/* 좌측 메인 콘텐츠 */}
@@ -66,22 +69,9 @@ export default function Page() {
                 </header>
 
                 <Grid3 aria-label="이벤트 카드">
-                    <EventCard
-                        title="유사쿠라"
-                        date="2025.02.11"
-                        status="closed"
-                    ></EventCard>
-                    <EventCard title="유사쿠라" date="2025.02.11"></EventCard>
-                    <EventCard title="유사쿠라" date="2025.02.11"></EventCard>
-                    <EventCard title="유사쿠라" date="2025.02.11"></EventCard>
-                    <EventCard title="유사쿠라" date="2025.02.11"></EventCard>
-                    <EventCard title="유사쿠라" date="2025.02.11"></EventCard>
-                    <EventCard title="유사쿠라" date="2025.02.11"></EventCard>
-                    <EventCard title="유사쿠라" date="2025.02.11"></EventCard>
-                    <EventCard title="유사쿠라" date="2025.02.11"></EventCard>
-                    <EventCard title="유사쿠라" date="2025.02.11"></EventCard>
-                    <EventCard title="유사쿠라" date="2025.02.11"></EventCard>
-                    <EventCard title="유사쿠라" date="2025.02.11"></EventCard>
+                        {events.map((ev) => (
+                            <EventCard key={ev.id} title={ev.title} date={ev.date} place={ev.place} sheetUrl={ev.sheetUrl}/>
+                        ))}
                 </Grid3>
             </Section>
         </Main>
