@@ -61,13 +61,9 @@ export default function Nav() {
   return (
     <Bar>
       <Wrap>
-        <Brand href="/">EventSender</Brand>
+        <Brand href="/">Mailable</Brand>
         <Menu>
           <li><Link href="/" aria-current="page">대시보드</Link></li>
-          <li><Link href="/events">행사 관리</Link></li>
-          <li><Link href="/mailings">메일링</Link></li>
-          <li><Link href="/attendees">참석자</Link></li>
-          <li><Link href="/reports">리포트</Link></li>
         </Menu>
         <Actions>
           <button type="button">설정</button>
