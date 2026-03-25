@@ -3,6 +3,7 @@
 
 import { google } from "googleapis";
 import { prisma } from "@/src/lib/prisma";
+import { decrypt, encrypt } from "@/src/lib/crypto";
 
 interface SendMailOptions {
   userId: string; // DB User.id
@@ -42,8 +43,8 @@ export async function sendGmail(opts: SendMailOptions): Promise<SendResult> {
   );
 
   oauth2Client.setCredentials({
-    refresh_token: account.refresh_token,
-    access_token: account.access_token ?? undefined,
+    refresh_token: decrypt(account.refresh_token),
+    access_token: account.access_token ? decrypt(account.access_token) : undefined,
   });
 
   const gmail = google.gmail({ version: "v1", auth: oauth2Client });
@@ -71,12 +72,13 @@ export async function sendGmail(opts: SendMailOptions): Promise<SendResult> {
       requestBody: { raw: encodedMessage },
     });
 
-    // 갱신된 access_token 저장
+    // 갱신된 access_token 저장 (암호화 후 저장)
     const newTokens = (await oauth2Client.getAccessToken()).token;
-    if (newTokens && newTokens !== account.access_token) {
+    const currentDecrypted = account.access_token ? decrypt(account.access_token) : null;
+    if (newTokens && newTokens !== currentDecrypted) {
       await prisma.account.update({
         where: { id: account.id },
-        data: { access_token: newTokens },
+        data: { access_token: encrypt(newTokens) },
       });
     }
 

@@ -16,7 +16,8 @@
       "Bash(grep -n \"useEffect\\\\|useState\\\\|fetch\\\\|store\" /z/programming/event-auto-mailing/mailable/src/app/events/[id]/page.tsx)",
       "Bash(grep -r \"N+1\\\\|SELECT.*COUNT\" /z/programming/event-auto-mailing/mailable/src/app/api --include=*.ts)",
       "Bash(wc -l /z/programming/event-auto-mailing/mailable/src/app/events/[id]/page.tsx /z/programming/event-auto-mailing/mailable/src/view/page.tsx /z/programming/event-auto-mailing/mailable/src/components/AddEventModal.tsx)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(node -e \"console.log\\(require\\(''crypto''\\).randomBytes\\(32\\).toString\\(''hex''\\)\\)\")"
     ],
     "additionalDirectories": [
       "z:\\programming\\event-auto-mailing\\mailable\\src\\app\\api\\events\\[id]"

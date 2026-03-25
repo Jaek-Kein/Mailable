@@ -1,12 +1,30 @@
 // src/lib/auth.ts
 import type { NextAuthOptions } from "next-auth";
+import type { Adapter } from "next-auth/adapters";
 import { getServerSession } from "next-auth";
 import Google from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/src/lib/prisma";
+import { encrypt } from "@/src/lib/crypto";
+
+// PrismaAdapter를 래핑하여 OAuth 토큰을 DB 저장 전에 암호화합니다.
+const baseAdapter = PrismaAdapter(prisma);
+const encryptingAdapter: Adapter = {
+  ...baseAdapter,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  linkAccount: (async (account: any) => {
+    return baseAdapter.linkAccount!({
+      ...account,
+      refresh_token: account.refresh_token ? encrypt(account.refresh_token) : account.refresh_token,
+      access_token: account.access_token ? encrypt(account.access_token) : account.access_token,
+      id_token: account.id_token ? encrypt(account.id_token) : account.id_token,
+    });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  }) as any,
+};
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  adapter: encryptingAdapter,
   session: { strategy: "database" },
   providers: [
     Google({
