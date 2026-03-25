@@ -3,7 +3,7 @@ import { auth } from "@/src/lib/auth";
 import { put } from "@vercel/blob";
 import sharp from "sharp";
 
-const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_SIZE = 10 * 1024 * 1024; // 10MB
 
 export async function POST(req: NextRequest) {
   try {

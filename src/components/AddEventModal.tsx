@@ -224,8 +224,8 @@ export default function AddEventModal({ onClose }: Props) {
             setError("이미지 파일만 업로드할 수 있습니다.");
             return;
         }
-        if (file.size > 5 * 1024 * 1024) {
-            setError("포스터 파일은 최대 5MB까지 업로드 가능합니다.");
+        if (file.size > 10 * 1024 * 1024) {
+            setError("포스터 파일은 최대 10MB까지 업로드 가능합니다.");
             return;
         }
         setError(null);
@@ -325,7 +325,7 @@ export default function AddEventModal({ onClose }: Props) {
                                 <PosterPlaceholder>
                                     <span style={{ fontSize: "1.5rem" }}>🖼️</span>
                                     <span>클릭하여 포스터 이미지 선택</span>
-                                    <span style={{ fontSize: "0.75rem" }}>JPG, PNG, WebP · 최대 5MB</span>
+                                    <span style={{ fontSize: "0.75rem" }}>JPG, PNG, WebP · 최대 10MB</span>
                                 </PosterPlaceholder>
                             )}
                             {uploading && <UploadingOverlay>업로드 중…</UploadingOverlay>}
