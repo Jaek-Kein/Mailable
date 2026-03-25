@@ -34,7 +34,20 @@ export async function POST(req: NextRequest) {
             ? await (await fetch(sheetUrl, { cache: "no-store" })).text()
             : await fetchCsv({ spreadsheetId, gid });
 
-        const rows = csvToJson(csvText);
+        const allRows = csvToJson(csvText);
+
+        const EMAIL_KEYS = ["email", "이메일", "연락처", "e-mail", "mail"];
+        const NAME_KEYS = ["name", "이름", "입금자명", "닉네임", "성명", "참가자명"];
+        const TS_KEYS = ["타임스탬프", "timestamp", "제출 시간", "응답 날짜", "응답시간"];
+        const ALLOWED_KEYS = [...EMAIL_KEYS, ...NAME_KEYS, ...TS_KEYS];
+
+        const rows = allRows.map((row) =>
+            Object.fromEntries(
+                Object.entries(row).filter(([k]) =>
+                    ALLOWED_KEYS.some((key) => k.toLowerCase() === key.toLowerCase())
+                )
+            )
+        );
 
         const payload = { rows };
 
