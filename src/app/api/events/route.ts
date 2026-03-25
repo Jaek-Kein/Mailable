@@ -10,6 +10,7 @@ const schema = z.object({
   date: z.string().datetime().optional(),
   place: z.string().optional(),
   sheetUrl: z.string().url().optional(),
+  posterUrl: z.string().url().optional(),
   status: z.nativeEnum(EventStatus).optional(),
   eventData: z.object({ payload: z.any() }).optional(),
 });
@@ -40,7 +41,7 @@ export async function POST(req: NextRequest) {
     if (!ownerId) return NextResponse.json({ ok:false, error:"unauthorized" }, { status: 401 });
 
     const body = await req.json();
-    const { title, date, place, sheetUrl, status, eventData } = schema.parse(body);
+    const { title, date, place, sheetUrl, posterUrl, status, eventData } = schema.parse(body);
 
     const created = await prisma.event.create({
       data: {
@@ -49,6 +50,7 @@ export async function POST(req: NextRequest) {
         date: date ? new Date(date) : null,
         place,
         sheetUrl,
+        posterUrl,
         status: status ?? EventStatus.ONGOING,
         data: eventData ? { create: { payload: eventData.payload } } : undefined,
       },

@@ -1,7 +1,7 @@
 "use client";
 
 import styled from "@emotion/styled";
-import { useRef, useEffect, FormEvent, useState } from "react";
+import { useRef, useEffect, FormEvent, useState, ChangeEvent } from "react";
 import { useEventStore } from "@/src/store/useEventStore";
 
 interface Props {
@@ -140,9 +140,65 @@ const SubmitButton = styled.button`
     &:disabled { background: #93c5fd; cursor: not-allowed; }
 `;
 
+// 포스터 업로드 관련
+const PosterUploadArea = styled.label<{ hasPreview: boolean }>`
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    height: 140px;
+    border: 2px dashed ${({ hasPreview }) => (hasPreview ? "#2563eb" : "#d1d5db")};
+    border-radius: 10px;
+    cursor: pointer;
+    overflow: hidden;
+    position: relative;
+    background: ${({ hasPreview }) => (hasPreview ? "#eff6ff" : "#f9fafb")};
+    transition: border-color 0.15s, background 0.15s;
+    &:hover { border-color: #2563eb; background: #eff6ff; }
+`;
+
+const PosterPreview = styled.img`
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px;
+`;
+
+const PosterPlaceholder = styled.div`
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    color: #9ca3af;
+    font-size: 0.85rem;
+    pointer-events: none;
+`;
+
+const HiddenFileInput = styled.input`
+    display: none;
+`;
+
+const UploadingOverlay = styled.div`
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.82rem;
+    color: #2563eb;
+    font-weight: 600;
+`;
+
 export default function AddEventModal({ onClose }: Props) {
     const { addEvent, loading } = useEventStore();
     const [error, setError] = useState<string | null>(null);
+    const [posterFile, setPosterFile] = useState<File | null>(null);
+    const [posterPreview, setPosterPreview] = useState<string | null>(null);
+    const [uploading, setUploading] = useState(false);
     const firstInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -153,6 +209,30 @@ export default function AddEventModal({ onClose }: Props) {
         window.addEventListener("keydown", onKeyDown);
         return () => window.removeEventListener("keydown", onKeyDown);
     }, [onClose]);
+
+    // 미리보기 URL 정리
+    useEffect(() => {
+        return () => {
+            if (posterPreview) URL.revokeObjectURL(posterPreview);
+        };
+    }, [posterPreview]);
+
+    const handlePosterChange = (e: ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (!file.type.startsWith("image/")) {
+            setError("이미지 파일만 업로드할 수 있습니다.");
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            setError("포스터 파일은 최대 5MB까지 업로드 가능합니다.");
+            return;
+        }
+        setError(null);
+        setPosterFile(file);
+        if (posterPreview) URL.revokeObjectURL(posterPreview);
+        setPosterPreview(URL.createObjectURL(file));
+    };
 
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -166,18 +246,32 @@ export default function AddEventModal({ onClose }: Props) {
         if (!title) { setError("행사명을 입력해주세요."); return; }
         if (!dateRaw) { setError("날짜를 선택해주세요."); return; }
 
-        // date input gives "YYYY-MM-DD", API expects ISO datetime
         const date = new Date(dateRaw).toISOString();
 
-        await addEvent({
-            title,
-            date,
-            place,
-            sheetUrl,
-        });
+        // 포스터 업로드
+        let posterUrl: string | undefined;
+        if (posterFile) {
+            setUploading(true);
+            try {
+                const uploadFd = new FormData();
+                uploadFd.append("file", posterFile);
+                const res = await fetch("/api/upload/poster", { method: "POST", body: uploadFd });
+                const json = await res.json();
+                if (!json.ok) throw new Error(json.error ?? "포스터 업로드 실패");
+                posterUrl = json.url;
+            } catch (err) {
+                setError(err instanceof Error ? err.message : "포스터 업로드 중 오류가 발생했습니다.");
+                setUploading(false);
+                return;
+            }
+            setUploading(false);
+        }
 
+        await addEvent({ title, date, place, sheetUrl, posterUrl });
         onClose();
     };
+
+    const isSubmitting = loading || uploading;
 
     return (
         <Backdrop onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -221,10 +315,36 @@ export default function AddEventModal({ onClose }: Props) {
                         <Hint>참가자 데이터를 불러올 스프레드시트 URL (선택)</Hint>
                     </Field>
 
+                    <Field>
+                        <Label>행사 포스터</Label>
+                        <PosterUploadArea hasPreview={!!posterPreview} htmlFor="poster-file">
+                            {posterPreview && (
+                                <PosterPreview src={posterPreview} alt="포스터 미리보기" />
+                            )}
+                            {!posterPreview && (
+                                <PosterPlaceholder>
+                                    <span style={{ fontSize: "1.5rem" }}>🖼️</span>
+                                    <span>클릭하여 포스터 이미지 선택</span>
+                                    <span style={{ fontSize: "0.75rem" }}>JPG, PNG, WebP · 최대 5MB</span>
+                                </PosterPlaceholder>
+                            )}
+                            {uploading && <UploadingOverlay>업로드 중…</UploadingOverlay>}
+                        </PosterUploadArea>
+                        <HiddenFileInput
+                            id="poster-file"
+                            type="file"
+                            accept="image/*"
+                            onChange={handlePosterChange}
+                        />
+                        {posterFile && (
+                            <Hint>{posterFile.name} · {(posterFile.size / 1024).toFixed(0)}KB → WebP로 변환 후 업로드됩니다</Hint>
+                        )}
+                    </Field>
+
                     <Footer>
                         <CancelButton type="button" onClick={onClose}>취소</CancelButton>
-                        <SubmitButton type="submit" disabled={loading}>
-                            {loading ? "저장 중…" : "행사 추가"}
+                        <SubmitButton type="submit" disabled={isSubmitting}>
+                            {uploading ? "업로드 중…" : loading ? "저장 중…" : "행사 추가"}
                         </SubmitButton>
                     </Footer>
                 </Form>

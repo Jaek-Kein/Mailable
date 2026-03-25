@@ -11,6 +11,7 @@ interface Event {
     date: string;
     place: string;
     sheetUrl: string;
+    posterUrl?: string | null;
     status?: 'ONGOING' | 'CLOSED';
     ownerId?: string;
     data?: EventData;

@@ -145,6 +145,7 @@ export default function Page() {
                                 date={ev.date}
                                 place={ev.place}
                                 sheetUrl={ev.sheetUrl}
+                                posterUrl={ev.posterUrl}
                                 id={ev.id}
                                 onDelete={removeEvent}
                             />

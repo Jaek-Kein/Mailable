@@ -8,7 +8,11 @@
       "Bash(pnpm update:*)",
       "Bash(pnpm approve-builds:*)",
       "Bash(find z:/programming/event-auto-mailing/mailable/node_modules/.pnpm -name config.d.ts -path */prisma/*)",
-      "Bash(find z:/programming/event-auto-mailing/mailable/node_modules/.pnpm -name *.d.ts -path */@prisma/config*)"
+      "Bash(find z:/programming/event-auto-mailing/mailable/node_modules/.pnpm -name *.d.ts -path */@prisma/config*)",
+      "Bash(pnpm install:*)",
+      "Bash(find z:/programming/event-auto-mailing/mailable/src -newer z:/programming/event-auto-mailing/mailable/.gitignore -name *.ts -o -newer z:/programming/event-auto-mailing/mailable/.gitignore -name *.tsx)",
+      "Read(//c/Users/KEIN/.claude/projects/z--programming-event-auto-mailing-mailable/memory/**)",
+      "Bash(pnpm build:*)"
     ]
   }
 }

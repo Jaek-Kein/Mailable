@@ -52,6 +52,7 @@ model Event {
   date          DateTime?
   place         String?
   sheetUrl      String?
+  posterUrl     String?
   emailSubject  String?
   emailContent  String?
   status        EventStatus @default(ONGOING)
