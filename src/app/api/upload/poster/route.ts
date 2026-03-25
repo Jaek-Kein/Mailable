@@ -15,8 +15,8 @@ export async function POST(request: NextRequest) {
         if (!session?.user?.id) throw new Error("unauthorized");
 
         return {
-          allowedContentTypes: ["image/webp"],
-          maximumSizeInBytes: 3 * 1024 * 1024, // 변환 후 최대 3MB
+          allowedContentTypes: ["image/webp", "image/png", "image/jpeg"],
+          maximumSizeInBytes: 5 * 1024 * 1024, // 변환 후 최대 5MB
         };
       },
       onUploadCompleted: async () => {

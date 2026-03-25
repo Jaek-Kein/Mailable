@@ -5,7 +5,7 @@ import { useRef, useEffect, FormEvent, useState, ChangeEvent } from "react";
 import { upload } from "@vercel/blob/client";
 import { useEventStore } from "@/src/store/useEventStore";
 
-/** Canvas API로 이미지를 WebP로 변환 (최대 800px) */
+/** Canvas API로 이미지를 WebP로 변환 (최대 800px). WebP 미지원 시 PNG로 폴백 */
 async function toWebP(file: File): Promise<Blob> {
     return new Promise((resolve, reject) => {
         const img = new Image();
@@ -16,8 +16,16 @@ async function toWebP(file: File): Promise<Blob> {
             canvas.width = Math.round(img.width * scale);
             canvas.height = Math.round(img.height * scale);
             canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+            // WebP 시도 후 결과가 없으면 PNG로 폴백
             canvas.toBlob(
-                (blob) => blob ? resolve(blob) : reject(new Error("WebP 변환 실패")),
+                (blob) => {
+                    if (blob && blob.type === "image/webp") return resolve(blob);
+                    // WebP 미지원 브라우저 폴백: PNG
+                    canvas.toBlob(
+                        (pngBlob) => pngBlob ? resolve(pngBlob) : reject(new Error("이미지 변환 실패")),
+                        "image/png"
+                    );
+                },
                 "image/webp",
                 0.8
             );
@@ -277,7 +285,8 @@ export default function AddEventModal({ onClose }: Props) {
             setUploading(true);
             try {
                 const webpBlob = await toWebP(posterFile);
-                const blob = await upload(`posters/${Date.now()}.webp`, webpBlob, {
+                const ext = webpBlob.type === "image/webp" ? "webp" : "png";
+                const blob = await upload(`posters/${Date.now()}.${ext}`, webpBlob, {
                     access: "public",
                     handleUploadUrl: "/api/upload/poster",
                 });
