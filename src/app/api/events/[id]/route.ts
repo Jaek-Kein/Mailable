@@ -27,7 +27,26 @@ export async function GET(
       return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
     }
 
-    return NextResponse.json({ ok: true, event });
+    // 이 행사의 모든 캠페인 발송 기록을 이메일 기준으로 집계 (최근 발송 기준)
+    const deliveries = await prisma.emailDelivery.findMany({
+      where: { campaign: { eventId: id } },
+      orderBy: { createdAt: "desc" },
+      select: { recipientEmail: true, status: true, sentAt: true, openedAt: true, createdAt: true },
+    });
+
+    // 이메일별 가장 최근 delivery만 유지
+    const deliveryMap: Record<string, { status: string; sentAt: string | null; openedAt: string | null }> = {};
+    for (const d of deliveries) {
+      if (!deliveryMap[d.recipientEmail]) {
+        deliveryMap[d.recipientEmail] = {
+          status: d.status,
+          sentAt: d.sentAt?.toISOString() ?? null,
+          openedAt: d.openedAt?.toISOString() ?? null,
+        };
+      }
+    }
+
+    return NextResponse.json({ ok: true, event, deliveryMap });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });

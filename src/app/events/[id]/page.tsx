@@ -277,6 +277,79 @@ function exportCsv(rows: Record<string, string>[], filename: string) {
     URL.revokeObjectURL(url);
 }
 
+/* ────────── Delivery status badge ────────── */
+type DeliveryStatus = "PENDING" | "SENT" | "DELIVERED" | "OPENED" | "CLICKED" | "BOUNCED" | "FAILED";
+
+const STATUS_LABEL: Record<DeliveryStatus, string> = {
+    PENDING: "대기", SENT: "발송됨", DELIVERED: "수신됨",
+    OPENED: "열람됨", CLICKED: "클릭됨", BOUNCED: "반송됨", FAILED: "실패",
+};
+
+const STATUS_COLOR: Record<DeliveryStatus, { bg: string; color: string }> = {
+    PENDING:   { bg: "#f1f5f9", color: "#64748b" },
+    SENT:      { bg: "#dbeafe", color: "#1d4ed8" },
+    DELIVERED: { bg: "#dcfce7", color: "#16a34a" },
+    OPENED:    { bg: "#d1fae5", color: "#059669" },
+    CLICKED:   { bg: "#a7f3d0", color: "#047857" },
+    BOUNCED:   { bg: "#fef3c7", color: "#b45309" },
+    FAILED:    { bg: "#fee2e2", color: "#dc2626" },
+};
+
+function DeliveryBadge({ info }: { info?: { status: string; sentAt: string | null; openedAt: string | null } }) {
+    if (!info) {
+        return <span style={{ fontSize: "0.75rem", color: "#cbd5e1" }}>미발송</span>;
+    }
+    const s = info.status as DeliveryStatus;
+    const { bg, color } = STATUS_COLOR[s] ?? { bg: "#f1f5f9", color: "#64748b" };
+    const label = STATUS_LABEL[s] ?? s;
+    const tooltip = info.openedAt
+        ? `열람: ${new Date(info.openedAt).toLocaleString("ko-KR")}`
+        : info.sentAt
+        ? `발송: ${new Date(info.sentAt).toLocaleString("ko-KR")}`
+        : undefined;
+    return (
+        <span
+            title={tooltip}
+            style={{
+                display: "inline-block",
+                padding: "2px 8px",
+                borderRadius: "999px",
+                fontSize: "0.72rem",
+                fontWeight: 600,
+                background: bg,
+                color,
+                whiteSpace: "nowrap",
+                cursor: tooltip ? "help" : "default",
+            }}
+        >
+            {label}
+        </span>
+    );
+}
+
+/* ────────── Checkbox styles ────────── */
+const CheckTh = styled.th`
+    width: 36px;
+    padding: 0 0 0 12px !important;
+`;
+
+const CheckTd = styled.td`
+    width: 36px;
+    padding: 0 0 0 12px !important;
+    cursor: default !important;
+`;
+
+const SelectBar = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    background: #eff6ff;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    color: #1d4ed8;
+`;
+
 /* ────────── Inline edit styles ────────── */
 const CellInput = styled.input`
     width: 100%;
@@ -303,11 +376,15 @@ export default function EventDetailPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [filter, setFilter] = useState("");
+    const [deliveryMap, setDeliveryMap] = useState<Record<string, { status: string; sentAt: string | null; openedAt: string | null }>>({});
 
     // Inline editing
     const [localRows, setLocalRows] = useState<Record<string, string>[]>([]);
     const [editingCell, setEditingCell] = useState<{ rowIndex: number; col: string } | null>(null);
     const [editValue, setEditValue] = useState("");
+
+    // 체크박스 선택 (원본 row index 기준)
+    const [checkedIndices, setCheckedIndices] = useState<Set<number>>(new Set());
 
     // Campaign modal
     const [modalOpen, setModalOpen] = useState(false);
@@ -326,7 +403,10 @@ export default function EventDetailPage() {
             .then((data) => {
                 if (!data.ok) throw new Error(data.error ?? "행사를 불러오지 못했습니다.");
                 setEvent(data.event);
-                setLocalRows(data.event?.data?.payload?.rows ?? []);
+                const loaded: Record<string, string>[] = data.event?.data?.payload?.rows ?? [];
+                setLocalRows(loaded);
+                setCheckedIndices(new Set(loaded.map((_, i) => i)));
+                setDeliveryMap(data.deliveryMap ?? {});
             })
             .catch((e) => setError(e.message))
             .finally(() => setLoading(false));
@@ -342,6 +422,7 @@ export default function EventDetailPage() {
     const rows = localRows;
     const allColumns = rows.length > 0 ? Object.keys(rows[0]) : [];
     const displayColumns = getDisplayColumns(allColumns);
+    const emailColKey = detectCol(EMAIL_KEYS, allColumns);
 
     // filteredRows carries the original row index for editing
     // 검색은 표시 컬럼 범위 내에서만
@@ -349,6 +430,10 @@ export default function EventDetailPage() {
         ? rows.map((r, i) => ({ row: r, origIdx: i }))
               .filter(({ row }) => displayColumns.some(({ key }) => row[key]?.toLowerCase().includes(filter.toLowerCase())))
         : rows.map((r, i) => ({ row: r, origIdx: i }));
+
+    const visibleOrigIndices = filteredIndexed.map(({ origIdx }) => origIdx);
+    const allVisibleChecked = visibleOrigIndices.length > 0 && visibleOrigIndices.every((i) => checkedIndices.has(i));
+    const someVisibleChecked = visibleOrigIndices.some((i) => checkedIndices.has(i));
 
     async function handleCellSave(rowIndex: number, col: string, value: string) {
         if (value === rows[rowIndex]?.[col]) { setEditingCell(null); return; }
@@ -369,6 +454,24 @@ export default function EventDetailPage() {
         setEditValue(rows[rowIndex]?.[col] ?? "");
     }
 
+    function toggleRow(origIdx: number) {
+        setCheckedIndices((prev) => {
+            const next = new Set(prev);
+            next.has(origIdx) ? next.delete(origIdx) : next.add(origIdx);
+            return next;
+        });
+    }
+
+    function toggleAllVisible(visibleIndices: number[]) {
+        const allChecked = visibleIndices.every((i) => checkedIndices.has(i));
+        setCheckedIndices((prev) => {
+            const next = new Set(prev);
+            if (allChecked) visibleIndices.forEach((i) => next.delete(i));
+            else visibleIndices.forEach((i) => next.add(i));
+            return next;
+        });
+    }
+
     async function handleSendCampaign(e: React.FormEvent) {
         e.preventDefault();
         if (!campaignName.trim() || !selectedTemplateId) {
@@ -385,11 +488,15 @@ export default function EventDetailPage() {
             return;
         }
 
-        const result = await sendCampaign(campaign.id);
+        const result = await sendCampaign(campaign.id, Array.from(checkedIndices));
         setSending(false);
         if (result) {
             setSendResult(result);
             setModalOpen(false);
+            // 발송 후 상태 새로고침
+            fetch(`/api/events/${id}`)
+                .then((r) => r.json())
+                .then((data) => { if (data.ok) setDeliveryMap(data.deliveryMap ?? {}); });
         } else {
             setCampaignError("이메일 발송에 실패했습니다.");
         }
@@ -456,8 +563,11 @@ export default function EventDetailPage() {
                                 <GhostBtn onClick={() => exportCsv(localRows, `${event.title}_participants.csv`)}>
                                     CSV 내보내기
                                 </GhostBtn>
-                                <PrimaryBtn onClick={() => { setModalOpen(true); setSendResult(null); setCampaignName(""); setSelectedTemplateId(""); }}>
-                                    이메일 발송
+                                <PrimaryBtn
+                                    disabled={checkedIndices.size === 0}
+                                    onClick={() => { setModalOpen(true); setSendResult(null); setCampaignName(""); setSelectedTemplateId(""); }}
+                                >
+                                    이메일 발송 {checkedIndices.size > 0 && `(${checkedIndices.size}명)`}
                                 </PrimaryBtn>
                             </>
                         )}
@@ -468,22 +578,61 @@ export default function EventDetailPage() {
                     <Empty>수집된 참가자 데이터가 없습니다. 행사 카드에서 Sheets URL로 데이터를 수집하세요.</Empty>
                 ) : (
                     <>
-                        {filter && (
-                            <p style={{ margin: 0, fontSize: "0.8rem", color: "#64748b" }}>
-                                {filteredIndexed.length}명 표시 중 (전체 {rows.length}명)
-                            </p>
-                        )}
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
+                            {filter ? (
+                                <p style={{ margin: 0, fontSize: "0.8rem", color: "#64748b" }}>
+                                    {filteredIndexed.length}명 표시 중 (전체 {rows.length}명)
+                                </p>
+                            ) : <span />}
+                            {checkedIndices.size > 0 && (
+                                <SelectBar>
+                                    <strong>{checkedIndices.size}명</strong> 선택됨
+                                    <button
+                                        type="button"
+                                        onClick={() => setCheckedIndices(new Set())}
+                                        style={{ background: "none", border: "none", color: "#2563eb", cursor: "pointer", fontSize: "0.8rem", padding: 0, textDecoration: "underline" }}
+                                    >
+                                        전체 해제
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setCheckedIndices(new Set(rows.map((_, i) => i)))}
+                                        style={{ background: "none", border: "none", color: "#2563eb", cursor: "pointer", fontSize: "0.8rem", padding: 0, textDecoration: "underline" }}
+                                    >
+                                        전체 선택
+                                    </button>
+                                </SelectBar>
+                            )}
+                        </div>
                         <EditHint>셀을 클릭하면 직접 수정할 수 있습니다</EditHint>
                         <div style={{ overflowX: "auto" }}>
                             <Table>
                                 <thead>
                                     <tr>
+                                        <CheckTh>
+                                            <input
+                                                type="checkbox"
+                                                checked={allVisibleChecked}
+                                                ref={(el) => { if (el) el.indeterminate = !allVisibleChecked && someVisibleChecked; }}
+                                                onChange={() => toggleAllVisible(visibleOrigIndices)}
+                                                aria-label="전체 선택"
+                                            />
+                                        </CheckTh>
                                         {displayColumns.map(({ key, label }) => <th key={key}>{label}</th>)}
+                                        <th style={{ whiteSpace: "nowrap" }}>발송 상태</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {filteredIndexed.map(({ row, origIdx }) => (
-                                        <tr key={origIdx}>
+                                        <tr key={origIdx} style={{ background: checkedIndices.has(origIdx) ? undefined : "#fafafa" }}>
+                                            <CheckTd onClick={(e) => e.stopPropagation()}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={checkedIndices.has(origIdx)}
+                                                    onChange={() => toggleRow(origIdx)}
+                                                    aria-label={`행 ${origIdx + 1} 선택`}
+                                                />
+                                            </CheckTd>
                                             {displayColumns.map(({ key }) => {
                                                 const isEditing = editingCell?.rowIndex === origIdx && editingCell?.col === key;
                                                 return (
@@ -509,6 +658,11 @@ export default function EventDetailPage() {
                                                     </td>
                                                 );
                                             })}
+                                            <td style={{ whiteSpace: "nowrap" }}>
+                                                <DeliveryBadge
+                                                    info={emailColKey ? deliveryMap[row[emailColKey]?.trim()] : undefined}
+                                                />
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -524,7 +678,14 @@ export default function EventDetailPage() {
                     <Modal>
                         <ModalTitle>이메일 캠페인 발송</ModalTitle>
                         <p style={{ margin: 0, fontSize: "0.875rem", color: "#475569" }}>
-                            <strong>{event.title}</strong> 행사의 참가자 {rows.length}명에게 이메일을 발송합니다.
+                            <strong>{event.title}</strong> 행사의 선택된 참가자{" "}
+                            <strong style={{ color: "#2563eb" }}>{checkedIndices.size}명</strong>
+                            에게 이메일을 발송합니다.
+                            {checkedIndices.size < rows.length && (
+                                <span style={{ color: "#94a3b8", marginLeft: "0.25rem" }}>
+                                    (전체 {rows.length}명 중)
+                                </span>
+                            )}
                         </p>
                         <form onSubmit={handleSendCampaign} style={{ display: "grid", gap: "1rem" }}>
                             <Field>
@@ -559,7 +720,7 @@ export default function EventDetailPage() {
                             <ModalFooter>
                                 <GhostBtn type="button" onClick={() => setModalOpen(false)}>취소</GhostBtn>
                                 <PrimaryBtn type="submit" disabled={sending}>
-                                    {sending ? "발송 중..." : `${rows.length}명에게 발송`}
+                                    {sending ? "발송 중..." : `${checkedIndices.size}명에게 발송`}
                                 </PrimaryBtn>
                             </ModalFooter>
                         </form>

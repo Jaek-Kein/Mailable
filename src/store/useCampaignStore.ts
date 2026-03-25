@@ -25,7 +25,7 @@ interface CampaignStore {
   fetchCampaigns: () => Promise<void>;
   createCampaign: (data: { name: string; templateId: string; eventId: string; scheduledAt?: string }) => Promise<Campaign | null>;
   removeCampaign: (id: string) => Promise<void>;
-  sendCampaign: (id: string) => Promise<SendResult | null>;
+  sendCampaign: (id: string, rowIndices?: number[]) => Promise<SendResult | null>;
 }
 
 export const useCampaignStore = create<CampaignStore>((set, get) => ({
@@ -74,13 +74,17 @@ export const useCampaignStore = create<CampaignStore>((set, get) => ({
     }
   },
 
-  sendCampaign: async (id) => {
+  sendCampaign: async (id, rowIndices) => {
     // 로컬 상태를 SENDING으로 낙관적 업데이트
     set((s) => ({
       campaigns: s.campaigns.map((c) => (c.id === id ? { ...c, status: "SENDING" } : c)),
     }));
     try {
-      const res = await fetch(`/api/campaigns/${id}/send`, { method: "POST" });
+      const res = await fetch(`/api/campaigns/${id}/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(rowIndices !== undefined ? { rowIndices } : {}),
+      });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error ?? "발송 실패");
       // 최신 목록 다시 fetch

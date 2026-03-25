@@ -23,7 +23,7 @@ function findNameKey(row: Record<string, string>): string | null {
   return null;
 }
 
-export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   const userId = session?.user?.id;
   if (!userId) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
@@ -43,8 +43,13 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ ok: false, error: "이미 발송됐거나 발송 중인 캠페인입니다." }, { status: 409 });
   }
 
-  const rows: Record<string, string>[] =
+  const body = await req.json().catch(() => ({}));
+  const rowIndices: number[] | undefined = Array.isArray(body.rowIndices) ? body.rowIndices : undefined;
+
+  const allRows: Record<string, string>[] =
     (campaign.event.data?.payload as { rows?: Record<string, string>[] } | null)?.rows ?? [];
+
+  const rows = rowIndices ? allRows.filter((_, i) => rowIndices.includes(i)) : allRows;
 
   if (rows.length === 0) {
     return NextResponse.json({ ok: false, error: "발송할 참가자 데이터가 없습니다. 먼저 Sheets 데이터를 수집하세요." }, { status: 422 });
