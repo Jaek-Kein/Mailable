@@ -187,7 +187,10 @@ function formatDatetime(v: string | null) {
 }
 
 export default function CampaignsPage() {
-    const { campaigns, loading, error, fetchCampaigns } = useCampaignStore();
+    const campaigns = useCampaignStore((s) => s.campaigns);
+    const loading = useCampaignStore((s) => s.loading);
+    const error = useCampaignStore((s) => s.error);
+    const fetchCampaigns = useCampaignStore((s) => s.fetchCampaigns);
 
     useEffect(() => {
         fetchCampaigns();

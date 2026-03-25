@@ -112,7 +112,11 @@ const EmptyState = styled.div`
 `;
 
 export default function Page() {
-    const { events, loading, error, fetchEvents, removeEvent } = useEventStore();
+    const events = useEventStore((s) => s.events);
+    const loading = useEventStore((s) => s.loading);
+    const error = useEventStore((s) => s.error);
+    const fetchEvents = useEventStore((s) => s.fetchEvents);
+    const removeEvent = useEventStore((s) => s.removeEvent);
     const [showModal, setShowModal] = useState(false);
 
     useEffect(() => {

@@ -1,7 +1,7 @@
 "use client";
 
 import styled from "@emotion/styled";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useCampaignStore } from "@/src/store/useCampaignStore";
 
@@ -483,7 +483,8 @@ export default function EventDetailPage() {
     const [sendResult, setSendResult] = useState<{ sentCount: number; failCount: number; total: number; errors: { email: string; reason: string }[] } | null>(null);
     const [campaignError, setCampaignError] = useState<string | null>(null);
 
-    const { createCampaign, sendCampaign } = useCampaignStore();
+    const createCampaign = useCampaignStore((s) => s.createCampaign);
+    const sendCampaign = useCampaignStore((s) => s.sendCampaign);
 
     useEffect(() => {
         fetch(`/api/events/${id}`)
@@ -519,18 +520,20 @@ export default function EventDetailPage() {
             .finally(() => setLoading(false));
     }, [id]);
 
+    const allColumns = useMemo(() => localRows.length > 0 ? Object.keys(localRows[0]) : [], [localRows]);
+    const displayColumns = useMemo(() => getDisplayColumns(allColumns), [allColumns]);
+    const emailColKey = useMemo(() => detectCol(EMAIL_KEYS, allColumns), [allColumns]);
+    const filteredIndexed = useMemo(() => {
+        if (!filter.trim()) return localRows.map((r, i) => ({ row: r, origIdx: i }));
+        return localRows
+            .map((r, i) => ({ row: r, origIdx: i }))
+            .filter(({ row }) => displayColumns.some(({ key }) => row[key]?.toLowerCase().includes(filter.toLowerCase())));
+    }, [localRows, filter, displayColumns]);
+
     if (loading) return <Page><Empty>불러오는 중...</Empty></Page>;
     if (error || !event) return <Page><ErrorMessage>{error ?? "행사를 찾을 수 없습니다."}</ErrorMessage></Page>;
 
     const rows = localRows;
-    const allColumns = rows.length > 0 ? Object.keys(rows[0]) : [];
-    const displayColumns = getDisplayColumns(allColumns);
-    const emailColKey = detectCol(EMAIL_KEYS, allColumns);
-
-    const filteredIndexed = filter.trim()
-        ? rows.map((r, i) => ({ row: r, origIdx: i }))
-              .filter(({ row }) => displayColumns.some(({ key }) => row[key]?.toLowerCase().includes(filter.toLowerCase())))
-        : rows.map((r, i) => ({ row: r, origIdx: i }));
 
     const visibleOrigIndices = filteredIndexed.map(({ origIdx }) => origIdx);
     const allVisibleChecked = visibleOrigIndices.length > 0 && visibleOrigIndices.every((i) => checkedIndices.has(i));
@@ -608,9 +611,21 @@ export default function EventDetailPage() {
         if (result) {
             setSendResult(result);
             setModalOpen(false);
-            fetch(`/api/events/${id}`)
-                .then((r) => r.json())
-                .then((data) => { if (data.ok) setDeliveryMap(data.deliveryMap ?? {}); });
+            if (emailColKey) {
+                const failedEmails = new Set(result.errors.map((e) => e.email));
+                const sentAt = new Date().toISOString();
+                setDeliveryMap((prev) => {
+                    const next = { ...prev };
+                    for (const origIdx of checkedIndices) {
+                        const email = localRows[origIdx]?.[emailColKey]?.trim();
+                        if (!email) continue;
+                        next[email] = failedEmails.has(email)
+                            ? { status: "FAILED", sentAt: null, openedAt: null }
+                            : { status: "SENT", sentAt, openedAt: null };
+                    }
+                    return next;
+                });
+            }
         } else {
             setCampaignError("이메일 발송에 실패했습니다.");
         }

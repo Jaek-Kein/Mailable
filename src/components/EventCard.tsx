@@ -220,7 +220,8 @@ export default function EventCard({
     id, title, date, place, posterUrl, status,
     onMoreClick, onDelete, className, style, sheetUrl,
 }: EventCardProps) {
-    const { ingestFromSheetUrl, loading } = useSheetStore();
+    const ingestFromSheetUrl = useSheetStore((s) => s.ingestFromSheetUrl);
+    const loading = useSheetStore((s) => s.loading);
     const router = useRouter();
     const [showConfirm, setShowConfirm] = useState(false);
 

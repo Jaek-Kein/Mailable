@@ -10,7 +10,13 @@
       "Bash(cmd.exe /c \"taskkill /PID 9952 /F\")",
       "Bash(cmd.exe /c \"taskkill /IM node.exe /F 2>&1\")",
       "Bash(cmd.exe /c \"rd /s /q \"\"Z:\\\\programming\\\\event-auto-mailing\\\\mailable\\\\.next\"\" && echo done\")",
-      "Bash(cmd.exe /c \"dir \"\"Z:\\\\programming\\\\event-auto-mailing\\\\mailable\\\\.next\"\" 2>&1\")"
+      "Bash(cmd.exe /c \"dir \"\"Z:\\\\programming\\\\event-auto-mailing\\\\mailable\\\\.next\"\" 2>&1\")",
+      "Bash(head -100 /z/programming/event-auto-mailing/mailable/src/app/events/[id]/page.tsx)",
+      "Bash(wc -l /z/programming/event-auto-mailing/mailable/src/app/events/[id]/page.tsx)",
+      "Bash(grep -n \"useEffect\\\\|useState\\\\|fetch\\\\|store\" /z/programming/event-auto-mailing/mailable/src/app/events/[id]/page.tsx)",
+      "Bash(grep -r \"N+1\\\\|SELECT.*COUNT\" /z/programming/event-auto-mailing/mailable/src/app/api --include=*.ts)",
+      "Bash(wc -l /z/programming/event-auto-mailing/mailable/src/app/events/[id]/page.tsx /z/programming/event-auto-mailing/mailable/src/view/page.tsx /z/programming/event-auto-mailing/mailable/src/components/AddEventModal.tsx)",
+      "Bash(npx tsc:*)"
     ]
   }
 }
