@@ -301,6 +301,107 @@ const ModalFooter = styled.div`
     gap: 0.75rem;
 `;
 
+/* ────────── Tab Bar ────────── */
+const TabBar = styled.div`
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid ${C.border};
+    margin-bottom: -1.5rem;
+`;
+
+const Tab = styled.button<{ active: boolean }>`
+    appearance: none;
+    background: none;
+    border: none;
+    border-bottom: 2px solid ${({ active }) => active ? C.accent : "transparent"};
+    margin-bottom: -2px;
+    padding: 0.65rem 1.25rem;
+    font-size: 0.9rem;
+    font-family: var(--font-sans, sans-serif);
+    font-weight: ${({ active }) => active ? 600 : 400};
+    color: ${({ active }) => active ? C.accent : C.inkMuted};
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+
+    &:hover { color: ${C.ink}; }
+`;
+
+/* ────────── Attendance Check styles ────────── */
+const CheckinStats = styled.div`
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+`;
+
+const StatChip = styled.div<{ variant?: "success" | "muted" }>`
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.9rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    background: ${({ variant }) => variant === "success" ? "#dcfce7" : variant === "muted" ? C.paper : C.accentLight};
+    color: ${({ variant }) => variant === "success" ? "#16a34a" : variant === "muted" ? C.inkMuted : C.accent};
+    border: 1px solid ${({ variant }) => variant === "success" ? "#bbf7d0" : variant === "muted" ? C.border : "#fdd3c8"};
+`;
+
+const CheckinRow = styled.div<{ checked: boolean }>`
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: 10px;
+    border: 1px solid ${({ checked }) => checked ? "#bbf7d0" : C.border};
+    background: ${({ checked }) => checked ? "#f0fdf4" : C.card};
+    transition: background 0.15s, border-color 0.15s;
+    cursor: pointer;
+    user-select: none;
+
+    &:hover {
+        background: ${({ checked }) => checked ? "#dcfce7" : C.paper};
+    }
+`;
+
+const CheckinIndicator = styled.div<{ checked: boolean }>`
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid ${({ checked }) => checked ? "#16a34a" : C.border};
+    background: ${({ checked }) => checked ? "#16a34a" : "transparent"};
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.15s;
+    color: #fff;
+    font-size: 0.8rem;
+`;
+
+const CheckinName = styled.span`
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: ${C.ink};
+    min-width: 100px;
+`;
+
+const CheckinEmail = styled.span`
+    font-size: 0.8rem;
+    color: ${C.inkMuted};
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+`;
+
+const CheckinTime = styled.span`
+    font-size: 0.75rem;
+    color: #16a34a;
+    white-space: nowrap;
+    flex-shrink: 0;
+`;
+
 /* ────────── Column detection ────────── */
 const EMAIL_KEYS = ["email", "이메일", "연락처", "e-mail", "mail"];
 const NAME_KEYS = ["name", "이름", "입금자명", "닉네임", "성명", "참가자명"];
@@ -430,6 +531,147 @@ const EditHint = styled.span`
     color: ${C.inkMuted};
     margin-left: 0.5rem;
 `;
+
+/* ────────── AttendanceTab ────────── */
+interface AttendanceTabProps {
+    eventId: string;
+    rows: Record<string, string>[];
+    emailColKey: string | null;
+    nameColKey: string | null;
+    initialCheckinMap: Record<string, string | null>;
+}
+
+const AttendanceTab = memo(function AttendanceTab({ eventId, rows, emailColKey, nameColKey, initialCheckinMap }: AttendanceTabProps) {
+    const [checkinMap, setCheckinMap] = useState<Record<string, string | null>>(initialCheckinMap);
+    const [filter, setFilter] = useState("");
+    const [resetting, setResetting] = useState(false);
+
+    const filtered = useMemo(() => {
+        if (!filter.trim()) return rows.map((r, i) => ({ row: r, i }));
+        const q = filter.toLowerCase();
+        return rows
+            .map((r, i) => ({ row: r, i }))
+            .filter(({ row }) => {
+                const name = nameColKey ? row[nameColKey] : "";
+                const email = emailColKey ? row[emailColKey] : "";
+                return (name ?? "").toLowerCase().includes(q) || (email ?? "").toLowerCase().includes(q);
+            });
+    }, [rows, filter, emailColKey, nameColKey]);
+
+    const checkedInCount = useMemo(
+        () => Object.values(checkinMap).filter(Boolean).length,
+        [checkinMap]
+    );
+
+    async function toggleCheckin(email: string, current: boolean) {
+        const next = !current;
+        // 낙관적 업데이트
+        setCheckinMap((prev) => ({ ...prev, [email]: next ? new Date().toISOString() : null }));
+        const res = await fetch(`/api/events/${eventId}/checkin`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, checkedIn: next }),
+        });
+        const data = await res.json();
+        if (!data.ok) {
+            // 실패 시 롤백
+            setCheckinMap((prev) => ({ ...prev, [email]: current ? new Date().toISOString() : null }));
+        }
+    }
+
+    async function resetAll() {
+        if (!confirm("전체 입장 체크를 초기화하시겠습니까?")) return;
+        setResetting(true);
+        await fetch(`/api/events/${eventId}/checkin`, { method: "DELETE" });
+        setCheckinMap({});
+        setResetting(false);
+    }
+
+    if (rows.length === 0) {
+        return <Empty>수집된 참가자 데이터가 없습니다. 먼저 Sheets URL로 데이터를 수집하세요.</Empty>;
+    }
+
+    return (
+        <div style={{ display: "grid", gap: "1rem" }}>
+            {/* 통계 */}
+            <CheckinStats>
+                <StatChip variant="success">
+                    ✓ 입장 완료 {checkedInCount}명
+                </StatChip>
+                <StatChip variant="muted">
+                    미입장 {rows.length - checkedInCount}명
+                </StatChip>
+                <StatChip>
+                    전체 {rows.length}명
+                </StatChip>
+            </CheckinStats>
+
+            {/* 진행 바 */}
+            <div style={{ background: C.border, borderRadius: "999px", height: "6px", overflow: "hidden" }}>
+                <div
+                    style={{
+                        height: "100%",
+                        width: `${rows.length > 0 ? (checkedInCount / rows.length) * 100 : 0}%`,
+                        background: "#16a34a",
+                        borderRadius: "999px",
+                        transition: "width 0.3s ease",
+                    }}
+                />
+            </div>
+
+            {/* 툴바 */}
+            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+                <FilterInput
+                    type="search"
+                    placeholder="이름 또는 이메일 검색..."
+                    value={filter}
+                    onChange={(e) => setFilter(e.target.value)}
+                    style={{ width: 240 }}
+                />
+                <GhostBtn onClick={resetAll} disabled={resetting} style={{ marginLeft: "auto" }}>
+                    {resetting ? "초기화 중..." : "전체 초기화"}
+                </GhostBtn>
+            </div>
+
+            {/* 참가자 목록 */}
+            <div style={{ display: "grid", gap: "0.4rem" }}>
+                {filtered.length === 0 ? (
+                    <Empty>검색 결과가 없습니다.</Empty>
+                ) : (
+                    filtered.map(({ row, i }) => {
+                        const email = emailColKey ? (row[emailColKey] ?? "") : "";
+                        const name = nameColKey ? (row[nameColKey] ?? "") : `참가자 ${i + 1}`;
+                        const checkedInAt = email ? checkinMap[email] : null;
+                        const isCheckedIn = !!checkedInAt;
+                        return (
+                            <CheckinRow
+                                key={i}
+                                checked={isCheckedIn}
+                                onClick={() => email && toggleCheckin(email, isCheckedIn)}
+                                role="button"
+                                aria-pressed={isCheckedIn}
+                            >
+                                <CheckinIndicator checked={isCheckedIn}>
+                                    {isCheckedIn && "✓"}
+                                </CheckinIndicator>
+                                <CheckinName>{name || "—"}</CheckinName>
+                                <CheckinEmail>{email || "이메일 없음"}</CheckinEmail>
+                                {isCheckedIn && checkedInAt && (
+                                    <CheckinTime>
+                                        {new Date(checkedInAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })} 입장
+                                    </CheckinTime>
+                                )}
+                                {!email && (
+                                    <span style={{ fontSize: "0.72rem", color: C.inkMuted }}>이메일 없음 (체크 불가)</span>
+                                )}
+                            </CheckinRow>
+                        );
+                    })
+                )}
+            </div>
+        </div>
+    );
+});
 
 /* ────────── TemplateEditor ────────── */
 interface TemplateEditorProps {
@@ -581,6 +823,8 @@ export default function EventDetailPage() {
 
     const [modalOpen, setModalOpen] = useState(false);
     const [sendResult, setSendResult] = useState<{ sentCount: number; failCount: number; total: number; errors: { email: string; reason: string }[] } | null>(null);
+    const [activeTab, setActiveTab] = useState<"email" | "checkin">("email");
+    const [checkinMap, setCheckinMap] = useState<Record<string, string | null>>({});
 
 
     useEffect(() => {
@@ -591,8 +835,10 @@ export default function EventDetailPage() {
                 setEvent(data.event);
                 const loaded: Record<string, string>[] = data.event?.data?.payload?.rows ?? [];
                 const dMap: Record<string, { status: string; sentAt: string | null; openedAt: string | null }> = data.deliveryMap ?? {};
+                const cMap: Record<string, string | null> = data.event?.data?.payload?.checkinMap ?? {};
                 setLocalRows(loaded);
                 setDeliveryMap(dMap);
+                setCheckinMap(cMap);
 
                 const SENT_STATUSES = new Set(["SENT", "DELIVERED", "OPENED", "CLICKED"]);
                 const allCols = loaded.length > 0 ? Object.keys(loaded[0]) : [];
@@ -618,6 +864,7 @@ export default function EventDetailPage() {
     const allColumns = useMemo(() => localRows.length > 0 ? Object.keys(localRows[0]) : [], [localRows]);
     const displayColumns = useMemo(() => getDisplayColumns(allColumns), [allColumns]);
     const emailColKey = useMemo(() => detectCol(EMAIL_KEYS, allColumns), [allColumns]);
+    const nameColKey = useMemo(() => detectCol(NAME_KEYS, allColumns), [allColumns]);
     const filteredIndexed = useMemo(() => {
         if (!filter.trim()) return localRows.map((r, i) => ({ row: r, origIdx: i }));
         return localRows
@@ -749,6 +996,23 @@ export default function EventDetailPage() {
                 </MetaRow>
             </Card>
 
+            {/* 탭 바 */}
+            <TabBar>
+                <Tab active={activeTab === "email"} onClick={() => setActiveTab("email")}>
+                    이메일 발송
+                </Tab>
+                <Tab active={activeTab === "checkin"} onClick={() => setActiveTab("checkin")}>
+                    입장 체크
+                    {Object.values(checkinMap).filter(Boolean).length > 0 && (
+                        <span style={{ marginLeft: "0.4rem", fontSize: "0.75rem", background: "#dcfce7", color: "#16a34a", padding: "1px 6px", borderRadius: "999px" }}>
+                            {Object.values(checkinMap).filter(Boolean).length}
+                        </span>
+                    )}
+                </Tab>
+            </TabBar>
+
+            {activeTab === "email" && (
+                <>
             {/* 이메일 템플릿 편집 */}
             <TemplateEditor
                 eventId={id}
@@ -757,18 +1021,21 @@ export default function EventDetailPage() {
                 hasTemplate={hasTemplate}
                 onSaved={(s, c) => setEvent((prev) => prev ? { ...prev, emailSubject: s, emailContent: c } : prev)}
             />
+            </>
+            )}
 
-            {/* 참가자 데이터 */}
+            {/* 참가자 데이터 / 입장 체크 */}
             <Card>
                 <Toolbar>
                     <SectionTitle style={{ margin: 0 }}>
-                        참가자 데이터 {rows.length > 0 && `(${rows.length}명)`}
+                        {activeTab === "checkin" ? "입장 체크" : "참가자 데이터"} {rows.length > 0 && `(${rows.length}명)`}
                         {event.data && (
                             <span style={{ fontWeight: 400, fontSize: "0.78rem", color: C.inkMuted, marginLeft: "0.5rem", fontFamily: "var(--font-sans, sans-serif)" }}>
                                 v{event.data.version}
                             </span>
                         )}
                     </SectionTitle>
+                    {activeTab === "email" && (
                     <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
                         {rows.length > 0 && (
                             <>
@@ -791,9 +1058,18 @@ export default function EventDetailPage() {
                             </>
                         )}
                     </div>
+                    )}
                 </Toolbar>
 
-                {rows.length === 0 ? (
+                {activeTab === "checkin" ? (
+                    <AttendanceTab
+                        eventId={id}
+                        rows={localRows}
+                        emailColKey={emailColKey}
+                        nameColKey={nameColKey}
+                        initialCheckinMap={checkinMap}
+                    />
+                ) : rows.length === 0 ? (
                     <Empty>수집된 참가자 데이터가 없습니다. 행사 카드에서 Sheets URL로 데이터를 수집하세요.</Empty>
                 ) : (
                     <>
