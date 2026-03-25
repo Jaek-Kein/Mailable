@@ -290,7 +290,7 @@ export default function EventDetailPage() {
     const [campaignName, setCampaignName] = useState("");
     const [selectedTemplateId, setSelectedTemplateId] = useState("");
     const [sending, setSending] = useState(false);
-    const [sendResult, setSendResult] = useState<{ sentCount: number; failCount: number; total: number } | null>(null);
+    const [sendResult, setSendResult] = useState<{ sentCount: number; failCount: number; total: number; errors: { email: string; reason: string }[] } | null>(null);
     const [campaignError, setCampaignError] = useState<string | null>(null);
 
     const { templates, fetchTemplates } = useTemplateStore();
@@ -373,11 +373,21 @@ export default function EventDetailPage() {
         <Page>
             <BackButton onClick={() => router.back()}>← 뒤로</BackButton>
 
-            {sendResult && (
+            {sendResult && sendResult.sentCount > 0 && (
                 <SuccessMsg>
                     발송 완료: {sendResult.sentCount}/{sendResult.total}명 성공
-                    {sendResult.failCount > 0 && ` (실패 ${sendResult.failCount}명)`}
+                    {sendResult.failCount > 0 && ` · 실패 ${sendResult.failCount}명`}
                 </SuccessMsg>
+            )}
+            {sendResult && sendResult.errors.length > 0 && (
+                <ErrorMessage>
+                    <strong>발송 실패 ({sendResult.errors.length}건)</strong>
+                    <ul style={{ margin: "0.5rem 0 0", paddingLeft: "1.25rem", fontSize: "0.85rem", display: "grid", gap: "0.25rem" }}>
+                        {sendResult.errors.map((e, i) => (
+                            <li key={i}><span style={{ fontWeight: 600 }}>{e.email}</span> — {e.reason}</li>
+                        ))}
+                    </ul>
+                </ErrorMessage>
             )}
 
             <Card>

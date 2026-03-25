@@ -15,6 +15,7 @@ interface SendResult {
   sentCount: number;
   failCount: number;
   total: number;
+  errors: { email: string; reason: string }[];
 }
 
 interface CampaignStore {
@@ -84,7 +85,7 @@ export const useCampaignStore = create<CampaignStore>((set, get) => ({
       if (!data.ok) throw new Error(data.error ?? "발송 실패");
       // 최신 목록 다시 fetch
       await get().fetchCampaigns();
-      return { sentCount: data.sentCount, failCount: data.failCount, total: data.total };
+      return { sentCount: data.sentCount, failCount: data.failCount, total: data.total, errors: data.errors ?? [] };
     } catch (e) {
       set((s) => ({
         campaigns: s.campaigns.map((c) => (c.id === id ? { ...c, status: "FAILED" } : c)),

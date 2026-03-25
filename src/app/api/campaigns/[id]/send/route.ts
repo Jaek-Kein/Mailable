@@ -56,12 +56,21 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
   let sentCount = 0;
   let failCount = 0;
+  const errors: { email: string; reason: string }[] = [];
 
   for (const row of rows) {
     const emailKey = findEmailKey(row);
-    if (!emailKey) { failCount++; continue; }
+    if (!emailKey) {
+      failCount++;
+      errors.push({ email: "(unknown)", reason: "이메일 컬럼을 찾을 수 없습니다. 컬럼명이 'email' 또는 '이메일'인지 확인하세요." });
+      continue;
+    }
     const recipientEmail = row[emailKey]?.trim();
-    if (!recipientEmail || !recipientEmail.includes("@")) { failCount++; continue; }
+    if (!recipientEmail || !recipientEmail.includes("@")) {
+      failCount++;
+      errors.push({ email: recipientEmail ?? "(비어있음)", reason: "유효하지 않은 이메일 주소입니다." });
+      continue;
+    }
 
     const nameKey = findNameKey(row);
     const recipientName = nameKey ? row[nameKey]?.trim() : undefined;
@@ -91,12 +100,15 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     });
 
     if (result.ok) sentCount++;
-    else failCount++;
+    else {
+      failCount++;
+      errors.push({ email: recipientEmail, reason: result.error ?? "알 수 없는 오류" });
+    }
   }
 
   // 캠페인 완료 상태 업데이트
   const finalStatus = failCount === rows.length ? "FAILED" : "COMPLETED";
   await prisma.emailCampaign.update({ where: { id }, data: { status: finalStatus } });
 
-  return NextResponse.json({ ok: true, sentCount, failCount, total: rows.length });
+  return NextResponse.json({ ok: true, sentCount, failCount, total: rows.length, errors });
 }
