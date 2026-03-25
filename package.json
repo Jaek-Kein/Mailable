@@ -17,6 +17,7 @@
     "@emotion/styled": "^11.14.1",
     "@prisma/adapter-pg": "^7.5.0",
     "@prisma/client": "^7.5.0",
+    "@tanstack/react-virtual": "^3.13.23",
     "@vercel/blob": "^2.3.1",
     "csv-parse": "^6.2.1",
     "googleapis": "^171.4.0",

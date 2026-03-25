@@ -1,7 +1,8 @@
 "use client";
 
 import styled from "@emotion/styled";
-import { useEffect, useState, useMemo, useCallback, memo } from "react";
+import { useEffect, useState, useMemo, useCallback, memo, useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { useParams, useRouter } from "next/navigation";
 import { useCampaignStore } from "@/src/store/useCampaignStore";
 
@@ -664,6 +665,14 @@ export default function EventDetailPage() {
             .filter(({ row }) => displayColumns.some(({ key }) => row[key]?.toLowerCase().includes(filter.toLowerCase())));
     }, [localRows, filter, displayColumns]);
 
+    const tableContainerRef = useRef<HTMLDivElement>(null);
+    const rowVirtualizer = useVirtualizer({
+        count: filteredIndexed.length,
+        getScrollElement: () => tableContainerRef.current,
+        estimateSize: () => 37,
+        overscan: 5,
+    });
+
     if (loading) return <Page><Empty>불러오는 중...</Empty></Page>;
     if (error || !event) return <Page><ErrorMessage>{error ?? "행사를 찾을 수 없습니다."}</ErrorMessage></Page>;
 
@@ -853,7 +862,7 @@ export default function EventDetailPage() {
                             )}
                         </div>
                         <EditHint>셀을 클릭하면 직접 수정할 수 있습니다</EditHint>
-                        <div style={{ overflowX: "auto" }}>
+                        <div ref={tableContainerRef} style={{ overflowX: "auto", overflowY: "auto", maxHeight: "520px" }}>
                             <Table>
                                 <thead>
                                     <tr>
@@ -871,48 +880,65 @@ export default function EventDetailPage() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {filteredIndexed.map(({ row, origIdx }) => (
-                                        <tr key={origIdx}>
-                                            <CheckTd onClick={(e) => e.stopPropagation()}>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={checkedIndices.has(origIdx)}
-                                                    onChange={() => toggleRow(origIdx)}
-                                                    aria-label={`행 ${origIdx + 1} 선택`}
-                                                />
-                                            </CheckTd>
-                                            {displayColumns.map(({ key }) => {
-                                                const isEditing = editingCell?.rowIndex === origIdx && editingCell?.col === key;
-                                                return (
-                                                    <td
-                                                        key={key}
-                                                        onClick={() => { if (!isEditing) startEdit(origIdx, key); }}
-                                                        style={{ cursor: "pointer", minWidth: "80px" }}
-                                                    >
-                                                        {isEditing ? (
-                                                            <CellInput
-                                                                autoFocus
-                                                                value={editValue}
-                                                                onChange={(e) => setEditValue(e.target.value)}
-                                                                onKeyDown={(e) => {
-                                                                    if (e.key === "Enter") handleCellSave(origIdx, key, editValue);
-                                                                    if (e.key === "Escape") setEditingCell(null);
-                                                                }}
-                                                                onBlur={() => handleCellSave(origIdx, key, editValue)}
-                                                            />
-                                                        ) : (
-                                                            row[key] ?? "—"
-                                                        )}
-                                                    </td>
-                                                );
-                                            })}
-                                            <td style={{ whiteSpace: "nowrap" }}>
-                                                <DeliveryBadge
-                                                    info={emailColKey ? deliveryMap[row[emailColKey]?.trim()] : undefined}
-                                                />
-                                            </td>
+                                    {rowVirtualizer.getVirtualItems().length > 0 && (
+                                        <tr style={{ height: `${rowVirtualizer.getVirtualItems()[0].start}px` }}>
+                                            <td colSpan={displayColumns.length + 2} style={{ padding: 0, border: "none" }} />
                                         </tr>
-                                    ))}
+                                    )}
+                                    {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                                        const { row, origIdx } = filteredIndexed[virtualRow.index];
+                                        return (
+                                            <tr key={origIdx}>
+                                                <CheckTd onClick={(e) => e.stopPropagation()}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={checkedIndices.has(origIdx)}
+                                                        onChange={() => toggleRow(origIdx)}
+                                                        aria-label={`행 ${origIdx + 1} 선택`}
+                                                    />
+                                                </CheckTd>
+                                                {displayColumns.map(({ key }) => {
+                                                    const isEditing = editingCell?.rowIndex === origIdx && editingCell?.col === key;
+                                                    return (
+                                                        <td
+                                                            key={key}
+                                                            onClick={() => { if (!isEditing) startEdit(origIdx, key); }}
+                                                            style={{ cursor: "pointer", minWidth: "80px" }}
+                                                        >
+                                                            {isEditing ? (
+                                                                <CellInput
+                                                                    autoFocus
+                                                                    value={editValue}
+                                                                    onChange={(e) => setEditValue(e.target.value)}
+                                                                    onKeyDown={(e) => {
+                                                                        if (e.key === "Enter") handleCellSave(origIdx, key, editValue);
+                                                                        if (e.key === "Escape") setEditingCell(null);
+                                                                    }}
+                                                                    onBlur={() => handleCellSave(origIdx, key, editValue)}
+                                                                />
+                                                            ) : (
+                                                                row[key] ?? "—"
+                                                            )}
+                                                        </td>
+                                                    );
+                                                })}
+                                                <td style={{ whiteSpace: "nowrap" }}>
+                                                    <DeliveryBadge
+                                                        info={emailColKey ? deliveryMap[row[emailColKey]?.trim()] : undefined}
+                                                    />
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                    {rowVirtualizer.getVirtualItems().length > 0 && (() => {
+                                        const last = rowVirtualizer.getVirtualItems().at(-1)!;
+                                        const paddingBottom = rowVirtualizer.getTotalSize() - last.end;
+                                        return paddingBottom > 0 ? (
+                                            <tr style={{ height: `${paddingBottom}px` }}>
+                                                <td colSpan={displayColumns.length + 2} style={{ padding: 0, border: "none" }} />
+                                            </tr>
+                                        ) : null;
+                                    })()}
                                 </tbody>
                             </Table>
                         </div>
