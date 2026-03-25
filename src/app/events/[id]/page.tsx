@@ -1,7 +1,7 @@
 "use client";
 
 import styled from "@emotion/styled";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback, memo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useCampaignStore } from "@/src/store/useCampaignStore";
 
@@ -457,6 +457,150 @@ const EditHint = styled.span`
     margin-left: 0.5rem;
 `;
 
+/* ────────── TemplateEditor ────────── */
+interface TemplateEditorProps {
+    eventId: string;
+    initialSubject: string;
+    initialContent: string;
+    hasTemplate: boolean;
+    onSaved: (subject: string, content: string) => void;
+}
+
+const TemplateEditor = memo(function TemplateEditor({ eventId, initialSubject, initialContent, hasTemplate, onSaved }: TemplateEditorProps) {
+    const [subject, setSubject] = useState(initialSubject);
+    const [content, setContent] = useState(initialContent);
+    const [saving, setSaving] = useState(false);
+    const [saved, setSaved] = useState(false);
+
+    async function handleSave() {
+        setSaving(true);
+        setSaved(false);
+        const res = await fetch(`/api/events/${eventId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ emailSubject: subject, emailContent: content }),
+        });
+        const data = await res.json();
+        setSaving(false);
+        if (data.ok) {
+            onSaved(subject, content);
+            setSaved(true);
+            setTimeout(() => setSaved(false), 2500);
+        }
+    }
+
+    return (
+        <Card>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
+                <SectionTitle style={{ margin: 0 }}>
+                    이메일 템플릿
+                    {!hasTemplate && (
+                        <span style={{ marginLeft: "0.5rem", fontSize: "0.75rem", color: C.accent, fontWeight: 400 }}>
+                            (미설정 — 발송 전 반드시 설정하세요)
+                        </span>
+                    )}
+                </SectionTitle>
+                <PrimaryBtn type="button" onClick={handleSave} disabled={saving} style={{ padding: "6px 14px", fontSize: "0.82rem" }}>
+                    {saving ? "저장 중..." : saved ? "저장됨 ✓" : "저장"}
+                </PrimaryBtn>
+            </div>
+            <TemplateField>
+                <TemplateLabel htmlFor="email-subject">제목</TemplateLabel>
+                <TemplateInput
+                    id="email-subject"
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                    placeholder="예) {{행사명}} 참가 안내드립니다"
+                />
+            </TemplateField>
+            <TemplateField>
+                <TemplateLabel htmlFor="email-content">내용</TemplateLabel>
+                <TemplateTextarea
+                    id="email-content"
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    placeholder={"안녕하세요, {{이름}}님!\n\n{{행사명}} 행사에 참가 신청해 주셔서 감사합니다.\n\n..."}
+                />
+            </TemplateField>
+            <PlaceholderHint>
+                플레이스홀더: <code style={{ background: C.paper, padding: "1px 5px", borderRadius: 4, fontSize: "0.82em" }}>{"{{컬럼명}}"}</code> 형식으로 참가자 데이터가 치환됩니다.
+                기본 제공: <code style={{ background: C.paper, padding: "1px 5px", borderRadius: 4, fontSize: "0.82em" }}>{"{{행사명}}"}</code>
+            </PlaceholderHint>
+        </Card>
+    );
+});
+
+/* ────────── CampaignModal ────────── */
+interface CampaignModalProps {
+    eventTitle: string;
+    emailSubject: string | null;
+    emailContent: string | null;
+    checkedCount: number;
+    totalRows: number;
+    onClose: () => void;
+    onSend: (name: string) => Promise<void>;
+}
+
+const CampaignModal = memo(function CampaignModal({ eventTitle, emailSubject, emailContent, checkedCount, totalRows, onClose, onSend }: CampaignModalProps) {
+    const [campaignName, setCampaignName] = useState("");
+    const [sending, setSending] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    async function handleSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        if (!campaignName.trim()) { setError("캠페인 이름을 입력하세요."); return; }
+        setSending(true);
+        setError(null);
+        try {
+            await onSend(campaignName);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "이메일 발송에 실패했습니다.");
+        } finally {
+            setSending(false);
+        }
+    }
+
+    return (
+        <Overlay onClick={(e) => e.target === e.currentTarget && onClose()}>
+            <Modal>
+                <ModalTitle>이메일 캠페인 발송</ModalTitle>
+                <p style={{ margin: 0, fontSize: "0.875rem", color: C.inkSoft }}>
+                    <strong>{eventTitle}</strong> 행사의 선택된 참가자{" "}
+                    <strong style={{ color: C.accent }}>{checkedCount}명</strong>
+                    에게 이메일을 발송합니다.
+                    {checkedCount < totalRows && (
+                        <span style={{ color: C.inkMuted, marginLeft: "0.25rem" }}>
+                            (전체 {totalRows}명 중)
+                        </span>
+                    )}
+                </p>
+                <div style={{ background: C.paper, border: `1px solid ${C.border}`, borderRadius: 8, padding: "0.75rem 1rem", fontSize: "0.82rem", color: C.inkSoft }}>
+                    <strong>제목:</strong> {emailSubject}<br />
+                    <strong>내용:</strong> {(emailContent ?? "").slice(0, 80)}{(emailContent ?? "").length > 80 ? "…" : ""}
+                </div>
+                <form onSubmit={handleSubmit} style={{ display: "grid", gap: "1rem" }}>
+                    <Field>
+                        <Label htmlFor="campaign-name">캠페인 이름 *</Label>
+                        <Input
+                            id="campaign-name"
+                            value={campaignName}
+                            onChange={(e) => setCampaignName(e.target.value)}
+                            placeholder="예) 1차 안내 발송"
+                        />
+                    </Field>
+                    {error && <ErrorMessage>{error}</ErrorMessage>}
+                    <ModalFooter>
+                        <GhostBtn type="button" onClick={onClose}>취소</GhostBtn>
+                        <PrimaryBtn type="submit" disabled={sending}>
+                            {sending ? "발송 중..." : `${checkedCount}명에게 발송`}
+                        </PrimaryBtn>
+                    </ModalFooter>
+                </form>
+            </Modal>
+        </Overlay>
+    );
+});
+
 /* ────────── Component ────────── */
 export default function EventDetailPage() {
     const { id } = useParams<{ id: string }>();
@@ -472,16 +616,8 @@ export default function EventDetailPage() {
     const [editValue, setEditValue] = useState("");
     const [checkedIndices, setCheckedIndices] = useState<Set<number>>(new Set());
 
-    const [emailSubject, setEmailSubject] = useState("");
-    const [emailContent, setEmailContent] = useState("");
-    const [templateSaving, setTemplateSaving] = useState(false);
-    const [templateSaved, setTemplateSaved] = useState(false);
-
     const [modalOpen, setModalOpen] = useState(false);
-    const [campaignName, setCampaignName] = useState("");
-    const [sending, setSending] = useState(false);
     const [sendResult, setSendResult] = useState<{ sentCount: number; failCount: number; total: number; errors: { email: string; reason: string }[] } | null>(null);
-    const [campaignError, setCampaignError] = useState<string | null>(null);
 
     const createCampaign = useCampaignStore((s) => s.createCampaign);
     const sendCampaign = useCampaignStore((s) => s.sendCampaign);
@@ -492,8 +628,6 @@ export default function EventDetailPage() {
             .then((data) => {
                 if (!data.ok) throw new Error(data.error ?? "행사를 불러오지 못했습니다.");
                 setEvent(data.event);
-                setEmailSubject(data.event.emailSubject ?? "");
-                setEmailContent(data.event.emailContent ?? "");
                 const loaded: Record<string, string>[] = data.event?.data?.payload?.rows ?? [];
                 const dMap: Record<string, { status: string; sentAt: string | null; openedAt: string | null }> = data.deliveryMap ?? {};
                 setLocalRows(loaded);
@@ -539,23 +673,6 @@ export default function EventDetailPage() {
     const allVisibleChecked = visibleOrigIndices.length > 0 && visibleOrigIndices.every((i) => checkedIndices.has(i));
     const someVisibleChecked = visibleOrigIndices.some((i) => checkedIndices.has(i));
 
-    async function handleTemplateSave() {
-        setTemplateSaving(true);
-        setTemplateSaved(false);
-        const res = await fetch(`/api/events/${id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ emailSubject, emailContent }),
-        });
-        const data = await res.json();
-        setTemplateSaving(false);
-        if (data.ok) {
-            setEvent((prev) => prev ? { ...prev, emailSubject, emailContent } : prev);
-            setTemplateSaved(true);
-            setTimeout(() => setTemplateSaved(false), 2500);
-        }
-    }
-
     async function handleCellSave(rowIndex: number, col: string, value: string) {
         if (value === rows[rowIndex]?.[col]) { setEditingCell(null); return; }
         const res = await fetch(`/api/events/${id}/data`, {
@@ -593,43 +710,31 @@ export default function EventDetailPage() {
         });
     }
 
-    async function handleSendCampaign(e: React.FormEvent) {
-        e.preventDefault();
-        if (!campaignName.trim()) { setCampaignError("캠페인 이름을 입력하세요."); return; }
-        setSending(true);
-        setCampaignError(null);
-
+    const handleSend = useCallback(async (campaignName: string) => {
         const campaign = await createCampaign({ name: campaignName, eventId: id });
-        if (!campaign) {
-            setCampaignError(useCampaignStore.getState().error ?? "캠페인 생성에 실패했습니다.");
-            setSending(false);
-            return;
-        }
+        if (!campaign) throw new Error(useCampaignStore.getState().error ?? "캠페인 생성에 실패했습니다.");
 
         const result = await sendCampaign(campaign.id, Array.from(checkedIndices));
-        setSending(false);
-        if (result) {
-            setSendResult(result);
-            setModalOpen(false);
-            if (emailColKey) {
-                const failedEmails = new Set(result.errors.map((e) => e.email));
-                const sentAt = new Date().toISOString();
-                setDeliveryMap((prev) => {
-                    const next = { ...prev };
-                    for (const origIdx of checkedIndices) {
-                        const email = localRows[origIdx]?.[emailColKey]?.trim();
-                        if (!email) continue;
-                        next[email] = failedEmails.has(email)
-                            ? { status: "FAILED", sentAt: null, openedAt: null }
-                            : { status: "SENT", sentAt, openedAt: null };
-                    }
-                    return next;
-                });
-            }
-        } else {
-            setCampaignError("이메일 발송에 실패했습니다.");
+        if (!result) throw new Error(useCampaignStore.getState().error ?? "이메일 발송에 실패했습니다.");
+
+        setSendResult(result);
+        setModalOpen(false);
+        if (emailColKey) {
+            const failedEmails = new Set(result.errors.map((e) => e.email));
+            const sentAt = new Date().toISOString();
+            setDeliveryMap((prev) => {
+                const next = { ...prev };
+                for (const origIdx of checkedIndices) {
+                    const email = localRows[origIdx]?.[emailColKey]?.trim();
+                    if (!email) continue;
+                    next[email] = failedEmails.has(email)
+                        ? { status: "FAILED", sentAt: null, openedAt: null }
+                        : { status: "SENT", sentAt, openedAt: null };
+                }
+                return next;
+            });
         }
-    }
+    }, [createCampaign, sendCampaign, checkedIndices, emailColKey, localRows, id]);
 
     const hasTemplate = !!(event.emailSubject && event.emailContent);
 
@@ -674,43 +779,13 @@ export default function EventDetailPage() {
             </Card>
 
             {/* 이메일 템플릿 편집 */}
-            <Card>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
-                    <SectionTitle style={{ margin: 0 }}>
-                        이메일 템플릿
-                        {!hasTemplate && (
-                            <span style={{ marginLeft: "0.5rem", fontSize: "0.75rem", color: C.accent, fontWeight: 400 }}>
-                                (미설정 — 발송 전 반드시 설정하세요)
-                            </span>
-                        )}
-                    </SectionTitle>
-                    <PrimaryBtn type="button" onClick={handleTemplateSave} disabled={templateSaving} style={{ padding: "6px 14px", fontSize: "0.82rem" }}>
-                        {templateSaving ? "저장 중..." : templateSaved ? "저장됨 ✓" : "저장"}
-                    </PrimaryBtn>
-                </div>
-                <TemplateField>
-                    <TemplateLabel htmlFor="email-subject">제목</TemplateLabel>
-                    <TemplateInput
-                        id="email-subject"
-                        value={emailSubject}
-                        onChange={(e) => setEmailSubject(e.target.value)}
-                        placeholder="예) {{행사명}} 참가 안내드립니다"
-                    />
-                </TemplateField>
-                <TemplateField>
-                    <TemplateLabel htmlFor="email-content">내용</TemplateLabel>
-                    <TemplateTextarea
-                        id="email-content"
-                        value={emailContent}
-                        onChange={(e) => setEmailContent(e.target.value)}
-                        placeholder={"안녕하세요, {{이름}}님!\n\n{{행사명}} 행사에 참가 신청해 주셔서 감사합니다.\n\n..."}
-                    />
-                </TemplateField>
-                <PlaceholderHint>
-                    플레이스홀더: <code style={{ background: C.paper, padding: "1px 5px", borderRadius: 4, fontSize: "0.82em" }}>{"{{컬럼명}}"}</code> 형식으로 참가자 데이터가 치환됩니다.
-                    기본 제공: <code style={{ background: C.paper, padding: "1px 5px", borderRadius: 4, fontSize: "0.82em" }}>{"{{행사명}}"}</code>
-                </PlaceholderHint>
-            </Card>
+            <TemplateEditor
+                eventId={id}
+                initialSubject={event.emailSubject ?? ""}
+                initialContent={event.emailContent ?? ""}
+                hasTemplate={hasTemplate}
+                onSaved={(s, c) => setEvent((prev) => prev ? { ...prev, emailSubject: s, emailContent: c } : prev)}
+            />
 
             {/* 참가자 데이터 */}
             <Card>
@@ -738,7 +813,7 @@ export default function EventDetailPage() {
                                 <PrimaryBtn
                                     disabled={checkedIndices.size === 0 || !hasTemplate}
                                     title={!hasTemplate ? "이메일 템플릿을 먼저 설정하세요" : undefined}
-                                    onClick={() => { setModalOpen(true); setSendResult(null); setCampaignName(""); }}
+                                    onClick={() => { setModalOpen(true); setSendResult(null); }}
                                 >
                                     이메일 발송 {checkedIndices.size > 0 && `(${checkedIndices.size}명)`}
                                 </PrimaryBtn>
@@ -847,43 +922,15 @@ export default function EventDetailPage() {
 
             {/* 이메일 발송 모달 */}
             {modalOpen && (
-                <Overlay onClick={(e) => e.target === e.currentTarget && setModalOpen(false)}>
-                    <Modal>
-                        <ModalTitle>이메일 캠페인 발송</ModalTitle>
-                        <p style={{ margin: 0, fontSize: "0.875rem", color: C.inkSoft }}>
-                            <strong>{event.title}</strong> 행사의 선택된 참가자{" "}
-                            <strong style={{ color: C.accent }}>{checkedIndices.size}명</strong>
-                            에게 이메일을 발송합니다.
-                            {checkedIndices.size < rows.length && (
-                                <span style={{ color: C.inkMuted, marginLeft: "0.25rem" }}>
-                                    (전체 {rows.length}명 중)
-                                </span>
-                            )}
-                        </p>
-                        <div style={{ background: C.paper, border: `1px solid ${C.border}`, borderRadius: 8, padding: "0.75rem 1rem", fontSize: "0.82rem", color: C.inkSoft }}>
-                            <strong>제목:</strong> {event.emailSubject}<br />
-                            <strong>내용:</strong> {(event.emailContent ?? "").slice(0, 80)}{(event.emailContent ?? "").length > 80 ? "…" : ""}
-                        </div>
-                        <form onSubmit={handleSendCampaign} style={{ display: "grid", gap: "1rem" }}>
-                            <Field>
-                                <Label htmlFor="campaign-name">캠페인 이름 *</Label>
-                                <Input
-                                    id="campaign-name"
-                                    value={campaignName}
-                                    onChange={(e) => setCampaignName(e.target.value)}
-                                    placeholder="예) 1차 안내 발송"
-                                />
-                            </Field>
-                            {campaignError && <ErrorMessage>{campaignError}</ErrorMessage>}
-                            <ModalFooter>
-                                <GhostBtn type="button" onClick={() => setModalOpen(false)}>취소</GhostBtn>
-                                <PrimaryBtn type="submit" disabled={sending}>
-                                    {sending ? "발송 중..." : `${checkedIndices.size}명에게 발송`}
-                                </PrimaryBtn>
-                            </ModalFooter>
-                        </form>
-                    </Modal>
-                </Overlay>
+                <CampaignModal
+                    eventTitle={event.title}
+                    emailSubject={event.emailSubject}
+                    emailContent={event.emailContent}
+                    checkedCount={checkedIndices.size}
+                    totalRows={rows.length}
+                    onClose={() => setModalOpen(false)}
+                    onSend={handleSend}
+                />
             )}
         </Page>
     );

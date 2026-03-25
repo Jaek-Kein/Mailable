@@ -3,7 +3,7 @@
 import { useSheetStore } from "@/src/store/useSheetsStore";
 import styled from "@emotion/styled";
 import { useRouter } from "next/navigation";
-import { CSSProperties, useState } from "react";
+import { CSSProperties, memo, useState } from "react";
 
 export type EventStatus = "scheduled" | "closed";
 
@@ -216,7 +216,7 @@ function toneByStatus(status?: EventStatus): "success" | "warning" | "danger" | 
     }
 }
 
-export default function EventCard({
+export default memo(function EventCard({
     id, title, date, place, posterUrl, status,
     onMoreClick, onDelete, className, style, sheetUrl,
 }: EventCardProps) {
@@ -301,4 +301,4 @@ export default function EventCard({
             </Wrap>
         </>
     );
-}
+});
