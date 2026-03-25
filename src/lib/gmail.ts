@@ -8,8 +8,7 @@ interface SendMailOptions {
   userId: string; // DB User.id
   to: string;
   subject: string;
-  html: string;
-  text?: string;
+  content: string; // plain text
 }
 
 interface SendResult {
@@ -23,9 +22,8 @@ interface SendResult {
  * 첫 로그인 시 access_type=offline + prompt=consent 로 refresh_token이 발급되어야 합니다.
  */
 export async function sendGmail(opts: SendMailOptions): Promise<SendResult> {
-  const { userId, to, subject, html, text } = opts;
+  const { userId, to, subject, content } = opts;
 
-  // 유저의 Google OAuth 계정 토큰 조회
   const account = await prisma.account.findFirst({
     where: { userId, provider: "google" },
   });
@@ -50,28 +48,15 @@ export async function sendGmail(opts: SendMailOptions): Promise<SendResult> {
 
   const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
-  // RFC 2822 메시지 작성
-  const bodyText = text ?? html.replace(/<[^>]*>/g, "");
-  const boundary = `boundary_${Date.now()}`;
+  // RFC 2822 plain text 메시지 작성
   const message = [
     `To: ${to}`,
     `Subject: =?UTF-8?B?${Buffer.from(subject).toString("base64")}?=`,
     "MIME-Version: 1.0",
-    `Content-Type: multipart/alternative; boundary="${boundary}"`,
-    "",
-    `--${boundary}`,
     "Content-Type: text/plain; charset=UTF-8",
     "Content-Transfer-Encoding: base64",
     "",
-    Buffer.from(bodyText).toString("base64"),
-    "",
-    `--${boundary}`,
-    "Content-Type: text/html; charset=UTF-8",
-    "Content-Transfer-Encoding: base64",
-    "",
-    Buffer.from(html).toString("base64"),
-    "",
-    `--${boundary}--`,
+    Buffer.from(content).toString("base64"),
   ].join("\r\n");
 
   const encodedMessage = Buffer.from(message)

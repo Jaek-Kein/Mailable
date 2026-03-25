@@ -24,7 +24,6 @@ interface Campaign {
     status: CampaignStatus;
     scheduledAt: string | null;
     createdAt: string;
-    template: { id: string; name: string; subject: string };
     event: { id: string; title: string };
     deliveries: Delivery[];
     _count: { deliveries: number };
@@ -254,10 +253,7 @@ export default function CampaignDetailPage() {
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem" }}>
                     <div>
                         <Title>{campaign.name}</Title>
-                        <Sub style={{ marginTop: "0.3rem" }}>
-                            {campaign.event.title} · 템플릿: {campaign.template.name}
-                        </Sub>
-                        <Sub>제목: {campaign.template.subject}</Sub>
+                        <Sub style={{ marginTop: "0.3rem" }}>{campaign.event.title}</Sub>
                         {campaign.scheduledAt && (
                             <Sub style={{ color: "#1d4ed8", marginTop: "0.25rem" }}>
                                 예약 일시: {fmt(campaign.scheduledAt)}

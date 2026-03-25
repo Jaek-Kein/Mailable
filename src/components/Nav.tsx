@@ -90,7 +90,6 @@ export default function Nav() {
         <Brand href="/">Mailable</Brand>
         <Menu>
           <li><Link href="/">대시보드</Link></li>
-          <li><Link href="/templates">이메일 템플릿</Link></li>
           <li><Link href="/campaigns">캠페인 현황</Link></li>
         </Menu>
         <Actions>

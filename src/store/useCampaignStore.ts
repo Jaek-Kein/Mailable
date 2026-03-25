@@ -6,7 +6,6 @@ export interface Campaign {
   status: "DRAFT" | "SCHEDULED" | "SENDING" | "COMPLETED" | "FAILED";
   scheduledAt: string | null;
   createdAt: string;
-  template: { id: string; name: string; subject: string };
   event: { id: string; title: string };
   _count: { deliveries: number };
 }
@@ -23,7 +22,7 @@ interface CampaignStore {
   loading: boolean;
   error?: string;
   fetchCampaigns: () => Promise<void>;
-  createCampaign: (data: { name: string; templateId: string; eventId: string; scheduledAt?: string }) => Promise<Campaign | null>;
+  createCampaign: (data: { name: string; eventId: string; scheduledAt?: string }) => Promise<Campaign | null>;
   removeCampaign: (id: string) => Promise<void>;
   sendCampaign: (id: string, rowIndices?: number[]) => Promise<SendResult | null>;
 }
@@ -75,7 +74,6 @@ export const useCampaignStore = create<CampaignStore>((set, get) => ({
   },
 
   sendCampaign: async (id, rowIndices) => {
-    // 로컬 상태를 SENDING으로 낙관적 업데이트
     set((s) => ({
       campaigns: s.campaigns.map((c) => (c.id === id ? { ...c, status: "SENDING" } : c)),
     }));
@@ -87,7 +85,6 @@ export const useCampaignStore = create<CampaignStore>((set, get) => ({
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error ?? "발송 실패");
-      // 최신 목록 다시 fetch
       await get().fetchCampaigns();
       return { sentCount: data.sentCount, failCount: data.failCount, total: data.total, errors: data.errors ?? [] };
     } catch (e) {

@@ -6,7 +6,6 @@ import { prisma } from "@/src/lib/prisma";
 import { sendGmail, renderTemplate } from "@/src/lib/gmail";
 import { DeliveryStatus } from "@prisma/client";
 
-// CSV 행에서 이메일 컬럼 키를 찾습니다 (대소문자 무시)
 function findEmailKey(row: Record<string, string>): string | null {
   const candidates = ["email", "이메일", "연락처", "e-mail", "mail"];
   for (const key of Object.keys(row)) {
@@ -33,7 +32,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const campaign = await prisma.emailCampaign.findFirst({
     where: { id, userId },
     include: {
-      template: true,
       event: { include: { data: true } },
     },
   });
@@ -41,6 +39,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!campaign) return NextResponse.json({ ok: false, error: "캠페인을 찾을 수 없습니다." }, { status: 404 });
   if (campaign.status === "SENDING" || campaign.status === "COMPLETED") {
     return NextResponse.json({ ok: false, error: "이미 발송됐거나 발송 중인 캠페인입니다." }, { status: 409 });
+  }
+
+  const { emailSubject, emailContent } = campaign.event;
+  if (!emailSubject || !emailContent) {
+    return NextResponse.json({ ok: false, error: "행사에 이메일 템플릿(제목/내용)이 설정되어 있지 않습니다." }, { status: 422 });
   }
 
   const body = await req.json().catch(() => ({}));
@@ -58,7 +61,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // 발송 시작 — 상태 SENDING으로 변경
   await prisma.emailCampaign.update({ where: { id }, data: { status: "SENDING" } });
 
-  const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
   let sentCount = 0;
   let failCount = 0;
   const errors: { email: string; reason: string }[] = [];
@@ -80,19 +82,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const nameKey = findNameKey(row);
     const recipientName = nameKey ? row[nameKey]?.trim() : undefined;
 
-    // 플레이스홀더 치환: 행 데이터 전체를 context로 사용
-    const htmlWithTracking =
-      renderTemplate(campaign.template.htmlContent, row) +
-      `<img src="${baseUrl}/api/track/open/${id}?e=${encodeURIComponent(recipientEmail)}" width="1" height="1" style="display:none" />`;
-    const text = renderTemplate(campaign.template.textContent, row);
-    const subject = renderTemplate(campaign.template.subject, row);
+    // 플레이스홀더 치환: 행 데이터 + 행사 제목
+    const context = { ...row, 행사명: campaign.event.title };
+    const subject = renderTemplate(emailSubject, context);
+    const content = renderTemplate(emailContent, context);
 
     // DB에 배달 레코드 생성
     const delivery = await prisma.emailDelivery.create({
       data: { campaignId: id, recipientEmail, recipientName, status: "PENDING" },
     });
 
-    const result = await sendGmail({ userId, to: recipientEmail, subject, html: htmlWithTracking, text });
+    const result = await sendGmail({ userId, to: recipientEmail, subject, content });
 
     const newStatus: DeliveryStatus = result.ok ? "SENT" : "FAILED";
     await prisma.emailDelivery.update({
@@ -111,7 +111,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
   }
 
-  // 캠페인 완료 상태 업데이트
   const finalStatus = failCount === rows.length ? "FAILED" : "COMPLETED";
   await prisma.emailCampaign.update({ where: { id }, data: { status: finalStatus } });
 

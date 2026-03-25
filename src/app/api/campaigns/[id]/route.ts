@@ -12,7 +12,6 @@ async function getOwnedCampaign(id: string, userId: string) {
   return prisma.emailCampaign.findFirst({
     where: { id, userId },
     include: {
-      template: true,
       event: { select: { id: true, title: true } },
       deliveries: { orderBy: { createdAt: "desc" } },
       _count: { select: { deliveries: true } },
@@ -49,11 +48,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const data = patchSchema.parse(body);
     const campaign = await prisma.emailCampaign.update({
       where: { id },
-      data: {
-        ...(data.name && { name: data.name }),
-      },
+      data: { ...(data.name && { name: data.name }) },
       include: {
-        template: { select: { id: true, name: true, subject: true } },
         event: { select: { id: true, title: true } },
       },
     });

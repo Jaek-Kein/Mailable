@@ -3,7 +3,6 @@
 import styled from "@emotion/styled";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useTemplateStore } from "@/src/store/useTemplateStore";
 import { useCampaignStore } from "@/src/store/useCampaignStore";
 
 interface EventData {
@@ -17,6 +16,8 @@ interface Event {
     date: string | null;
     place: string | null;
     sheetUrl: string | null;
+    emailSubject: string | null;
+    emailContent: string | null;
     status: "ONGOING" | "CLOSED";
     createdAt: string;
     data: EventData | null;
@@ -165,6 +166,48 @@ const SuccessMsg = styled.div`
     font-size: 0.875rem;
 `;
 
+/* ────────── Template editor styles ────────── */
+const TemplateField = styled.div`
+    display: grid;
+    gap: 0.4rem;
+`;
+
+const TemplateLabel = styled.label`
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #475569;
+`;
+
+const TemplateInput = styled.input`
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.875rem;
+    width: 100%;
+    box-sizing: border-box;
+    &:focus { outline: 2px solid #2563eb; outline-offset: 1px; }
+`;
+
+const TemplateTextarea = styled.textarea`
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 0.875rem;
+    width: 100%;
+    box-sizing: border-box;
+    resize: vertical;
+    min-height: 180px;
+    font-family: inherit;
+    line-height: 1.6;
+    &:focus { outline: 2px solid #2563eb; outline-offset: 1px; }
+`;
+
+const PlaceholderHint = styled.p`
+    margin: 0;
+    font-size: 0.76rem;
+    color: #94a3b8;
+`;
+
 /* ────────── Campaign Modal ────────── */
 const Overlay = styled.div`
     position: fixed;
@@ -181,7 +224,7 @@ const Modal = styled.div`
     border-radius: 16px;
     padding: 1.75rem;
     width: 100%;
-    max-width: 520px;
+    max-width: 480px;
     display: grid;
     gap: 1.25rem;
 `;
@@ -213,17 +256,6 @@ const Input = styled.input`
     &:focus { outline: 2px solid #2563eb; outline-offset: 1px; }
 `;
 
-const Select = styled.select`
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    padding: 8px 12px;
-    font-size: 0.875rem;
-    width: 100%;
-    box-sizing: border-box;
-    background: #fff;
-    &:focus { outline: 2px solid #2563eb; outline-offset: 1px; }
-`;
-
 const ModalFooter = styled.div`
     display: flex;
     justify-content: flex-end;
@@ -242,7 +274,6 @@ function detectCol(keys: string[], colNames: string[]): string | null {
   return null;
 }
 
-/** rows의 컬럼 중 표시할 3개(타임스탬프·이름·이메일)를 순서대로 반환 */
 function getDisplayColumns(colNames: string[]): { key: string; label: string }[] {
   const ts = detectCol(TIMESTAMP_KEYS, colNames);
   const name = detectCol(NAME_KEYS, colNames);
@@ -383,18 +414,22 @@ export default function EventDetailPage() {
     const [editingCell, setEditingCell] = useState<{ rowIndex: number; col: string } | null>(null);
     const [editValue, setEditValue] = useState("");
 
-    // 체크박스 선택 (원본 row index 기준)
+    // 체크박스 선택
     const [checkedIndices, setCheckedIndices] = useState<Set<number>>(new Set());
+
+    // 이메일 템플릿 편집
+    const [emailSubject, setEmailSubject] = useState("");
+    const [emailContent, setEmailContent] = useState("");
+    const [templateSaving, setTemplateSaving] = useState(false);
+    const [templateSaved, setTemplateSaved] = useState(false);
 
     // Campaign modal
     const [modalOpen, setModalOpen] = useState(false);
     const [campaignName, setCampaignName] = useState("");
-    const [selectedTemplateId, setSelectedTemplateId] = useState("");
     const [sending, setSending] = useState(false);
     const [sendResult, setSendResult] = useState<{ sentCount: number; failCount: number; total: number; errors: { email: string; reason: string }[] } | null>(null);
     const [campaignError, setCampaignError] = useState<string | null>(null);
 
-    const { templates, fetchTemplates } = useTemplateStore();
     const { createCampaign, sendCampaign } = useCampaignStore();
 
     useEffect(() => {
@@ -403,6 +438,8 @@ export default function EventDetailPage() {
             .then((data) => {
                 if (!data.ok) throw new Error(data.error ?? "행사를 불러오지 못했습니다.");
                 setEvent(data.event);
+                setEmailSubject(data.event.emailSubject ?? "");
+                setEmailContent(data.event.emailContent ?? "");
                 const loaded: Record<string, string>[] = data.event?.data?.payload?.rows ?? [];
                 setLocalRows(loaded);
                 setCheckedIndices(new Set(loaded.map((_, i) => i)));
@@ -412,10 +449,6 @@ export default function EventDetailPage() {
             .finally(() => setLoading(false));
     }, [id]);
 
-    useEffect(() => {
-        if (modalOpen) fetchTemplates();
-    }, [modalOpen, fetchTemplates]);
-
     if (loading) return <Page><Empty>불러오는 중...</Empty></Page>;
     if (error || !event) return <Page><ErrorMessage>{error ?? "행사를 찾을 수 없습니다."}</ErrorMessage></Page>;
 
@@ -424,8 +457,6 @@ export default function EventDetailPage() {
     const displayColumns = getDisplayColumns(allColumns);
     const emailColKey = detectCol(EMAIL_KEYS, allColumns);
 
-    // filteredRows carries the original row index for editing
-    // 검색은 표시 컬럼 범위 내에서만
     const filteredIndexed = filter.trim()
         ? rows.map((r, i) => ({ row: r, origIdx: i }))
               .filter(({ row }) => displayColumns.some(({ key }) => row[key]?.toLowerCase().includes(filter.toLowerCase())))
@@ -434,6 +465,23 @@ export default function EventDetailPage() {
     const visibleOrigIndices = filteredIndexed.map(({ origIdx }) => origIdx);
     const allVisibleChecked = visibleOrigIndices.length > 0 && visibleOrigIndices.every((i) => checkedIndices.has(i));
     const someVisibleChecked = visibleOrigIndices.some((i) => checkedIndices.has(i));
+
+    async function handleTemplateSave() {
+        setTemplateSaving(true);
+        setTemplateSaved(false);
+        const res = await fetch(`/api/events/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ emailSubject, emailContent }),
+        });
+        const data = await res.json();
+        setTemplateSaving(false);
+        if (data.ok) {
+            setEvent((prev) => prev ? { ...prev, emailSubject, emailContent } : prev);
+            setTemplateSaved(true);
+            setTimeout(() => setTemplateSaved(false), 2500);
+        }
+    }
 
     async function handleCellSave(rowIndex: number, col: string, value: string) {
         if (value === rows[rowIndex]?.[col]) { setEditingCell(null); return; }
@@ -474,16 +522,16 @@ export default function EventDetailPage() {
 
     async function handleSendCampaign(e: React.FormEvent) {
         e.preventDefault();
-        if (!campaignName.trim() || !selectedTemplateId) {
-            setCampaignError("캠페인 이름과 템플릿을 선택하세요.");
+        if (!campaignName.trim()) {
+            setCampaignError("캠페인 이름을 입력하세요.");
             return;
         }
         setSending(true);
         setCampaignError(null);
 
-        const campaign = await createCampaign({ name: campaignName, templateId: selectedTemplateId, eventId: id });
+        const campaign = await createCampaign({ name: campaignName, eventId: id });
         if (!campaign) {
-            setCampaignError("캠페인 생성에 실패했습니다.");
+            setCampaignError(useCampaignStore.getState().error ?? "캠페인 생성에 실패했습니다.");
             setSending(false);
             return;
         }
@@ -493,7 +541,6 @@ export default function EventDetailPage() {
         if (result) {
             setSendResult(result);
             setModalOpen(false);
-            // 발송 후 상태 새로고침
             fetch(`/api/events/${id}`)
                 .then((r) => r.json())
                 .then((data) => { if (data.ok) setDeliveryMap(data.deliveryMap ?? {}); });
@@ -501,6 +548,8 @@ export default function EventDetailPage() {
             setCampaignError("이메일 발송에 실패했습니다.");
         }
     }
+
+    const hasTemplate = !!(event.emailSubject && event.emailContent);
 
     return (
         <Page>
@@ -523,6 +572,7 @@ export default function EventDetailPage() {
                 </ErrorMessage>
             )}
 
+            {/* 행사 정보 */}
             <Card>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
                     <Title>{event.title}</Title>
@@ -541,6 +591,51 @@ export default function EventDetailPage() {
                 </MetaRow>
             </Card>
 
+            {/* 이메일 템플릿 편집 */}
+            <Card>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
+                    <SectionTitle style={{ margin: 0 }}>
+                        이메일 템플릿
+                        {!hasTemplate && (
+                            <span style={{ marginLeft: "0.5rem", fontSize: "0.75rem", color: "#ef4444", fontWeight: 400 }}>
+                                (미설정 — 발송 전 반드시 설정하세요)
+                            </span>
+                        )}
+                    </SectionTitle>
+                    <PrimaryBtn
+                        type="button"
+                        onClick={handleTemplateSave}
+                        disabled={templateSaving}
+                        style={{ padding: "6px 14px", fontSize: "0.8rem" }}
+                    >
+                        {templateSaving ? "저장 중..." : templateSaved ? "저장됨 ✓" : "저장"}
+                    </PrimaryBtn>
+                </div>
+                <TemplateField>
+                    <TemplateLabel htmlFor="email-subject">제목</TemplateLabel>
+                    <TemplateInput
+                        id="email-subject"
+                        value={emailSubject}
+                        onChange={(e) => setEmailSubject(e.target.value)}
+                        placeholder="예) {{행사명}} 참가 안내드립니다"
+                    />
+                </TemplateField>
+                <TemplateField>
+                    <TemplateLabel htmlFor="email-content">내용</TemplateLabel>
+                    <TemplateTextarea
+                        id="email-content"
+                        value={emailContent}
+                        onChange={(e) => setEmailContent(e.target.value)}
+                        placeholder={"안녕하세요, {{이름}}님!\n\n{{행사명}} 행사에 참가 신청해 주셔서 감사합니다.\n\n..."}
+                    />
+                </TemplateField>
+                <PlaceholderHint>
+                    플레이스홀더: <code style={{ background: "#f1f5f9", padding: "1px 5px", borderRadius: 4 }}>{"{{컬럼명}}"}</code> 형식으로 참가자 데이터가 치환됩니다.
+                    기본 제공: <code style={{ background: "#f1f5f9", padding: "1px 5px", borderRadius: 4 }}>{"{{행사명}}"}</code>
+                </PlaceholderHint>
+            </Card>
+
+            {/* 참가자 데이터 */}
             <Card>
                 <Toolbar>
                     <SectionTitle style={{ margin: 0 }}>
@@ -564,8 +659,9 @@ export default function EventDetailPage() {
                                     CSV 내보내기
                                 </GhostBtn>
                                 <PrimaryBtn
-                                    disabled={checkedIndices.size === 0}
-                                    onClick={() => { setModalOpen(true); setSendResult(null); setCampaignName(""); setSelectedTemplateId(""); }}
+                                    disabled={checkedIndices.size === 0 || !hasTemplate}
+                                    title={!hasTemplate ? "이메일 템플릿을 먼저 설정하세요" : undefined}
+                                    onClick={() => { setModalOpen(true); setSendResult(null); setCampaignName(""); }}
                                 >
                                     이메일 발송 {checkedIndices.size > 0 && `(${checkedIndices.size}명)`}
                                 </PrimaryBtn>
@@ -687,6 +783,10 @@ export default function EventDetailPage() {
                                 </span>
                             )}
                         </p>
+                        <div style={{ background: "#f8fafc", borderRadius: 8, padding: "0.75rem 1rem", fontSize: "0.82rem", color: "#475569" }}>
+                            <strong>제목:</strong> {event.emailSubject}<br />
+                            <strong>내용:</strong> {(event.emailContent ?? "").slice(0, 80)}{(event.emailContent ?? "").length > 80 ? "…" : ""}
+                        </div>
                         <form onSubmit={handleSendCampaign} style={{ display: "grid", gap: "1rem" }}>
                             <Field>
                                 <Label htmlFor="campaign-name">캠페인 이름 *</Label>
@@ -696,25 +796,6 @@ export default function EventDetailPage() {
                                     onChange={(e) => setCampaignName(e.target.value)}
                                     placeholder="예) 1차 안내 발송"
                                 />
-                            </Field>
-                            <Field>
-                                <Label htmlFor="template-select">이메일 템플릿 *</Label>
-                                <Select
-                                    id="template-select"
-                                    value={selectedTemplateId}
-                                    onChange={(e) => setSelectedTemplateId(e.target.value)}
-                                >
-                                    <option value="">템플릿 선택...</option>
-                                    {templates.map((t) => (
-                                        <option key={t.id} value={t.id}>{t.name} — {t.subject}</option>
-                                    ))}
-                                </Select>
-                                {templates.length === 0 && (
-                                    <p style={{ margin: 0, fontSize: "0.78rem", color: "#ef4444" }}>
-                                        템플릿이 없습니다.{" "}
-                                        <a href="/templates" style={{ color: "#2563eb" }}>템플릿 관리</a>에서 먼저 만들어 주세요.
-                                    </p>
-                                )}
                             </Field>
                             {campaignError && <ErrorMessage>{campaignError}</ErrorMessage>}
                             <ModalFooter>

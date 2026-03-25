@@ -37,48 +37,34 @@ model User {
   image         String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  
+
   events        Event[]
   accounts      Account[]
   sessions      Session[]
-  templates     EmailTemplate[]
   campaigns     EmailCampaign[]
 }
 
 model Event {
-  id        String      @id @default(uuid())
-  ownerId   String
-  owner     User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  title     String
-  date      DateTime?
-  place     String?
-  sheetUrl  String?
-  status    EventStatus @default(ONGOING)
-  createdAt DateTime    @default(now())
-  data      EventData?
-  campaigns EmailCampaign[]
+  id            String      @id @default(uuid())
+  ownerId       String
+  owner         User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  title         String
+  date          DateTime?
+  place         String?
+  sheetUrl      String?
+  emailSubject  String?
+  emailContent  String?
+  status        EventStatus @default(ONGOING)
+  createdAt     DateTime    @default(now())
+  data          EventData?
+  campaigns     EmailCampaign[]
 
   @@index([ownerId, status, date])
-}
-
-model EmailTemplate {
-  id          String   @id @default(cuid())
-  name        String
-  subject     String
-  htmlContent String
-  textContent String
-  userId      String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  campaigns EmailCampaign[]
 }
 
 model EmailCampaign {
   id          String         @id @default(cuid())
   name        String
-  templateId  String
   eventId     String
   scheduledAt DateTime?
   status      CampaignStatus @default(DRAFT)
@@ -87,7 +73,6 @@ model EmailCampaign {
   updatedAt   DateTime       @updatedAt
 
   user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  template   EmailTemplate   @relation(fields: [templateId], references: [id])
   event      Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
   deliveries EmailDelivery[]
 }
@@ -113,7 +98,6 @@ model EmailDelivery {
 model EventData {
   eventId   String   @id
   event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  // payload 예시: { "galleries": [{ "name": "...", "contact": "...", "account": "...", "emailSent": true }]}
   payload   Json
   version   Int      @default(1)
   updatedAt DateTime @default(now())

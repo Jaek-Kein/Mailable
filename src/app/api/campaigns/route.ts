@@ -6,7 +6,6 @@ import { prisma } from "@/src/lib/prisma";
 
 const createSchema = z.object({
   name: z.string().min(1),
-  templateId: z.string().min(1),
   eventId: z.string().min(1),
   scheduledAt: z.string().datetime().optional(),
 });
@@ -19,7 +18,6 @@ export async function GET() {
   const campaigns = await prisma.emailCampaign.findMany({
     where: { userId },
     include: {
-      template: { select: { id: true, name: true, subject: true } },
       event: { select: { id: true, title: true } },
       _count: { select: { deliveries: true } },
     },
@@ -36,27 +34,24 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { name, templateId, eventId, scheduledAt } = createSchema.parse(body);
+    const { name, eventId, scheduledAt } = createSchema.parse(body);
 
-    // 템플릿 소유자 확인
-    const template = await prisma.emailTemplate.findFirst({ where: { id: templateId, userId } });
-    if (!template) return NextResponse.json({ ok: false, error: "템플릿을 찾을 수 없습니다." }, { status: 404 });
-
-    // 행사 소유자 확인
+    // 행사 소유자 확인 + 템플릿 존재 여부 확인
     const event = await prisma.event.findFirst({ where: { id: eventId, ownerId: userId } });
     if (!event) return NextResponse.json({ ok: false, error: "행사를 찾을 수 없습니다." }, { status: 404 });
+    if (!event.emailSubject || !event.emailContent) {
+      return NextResponse.json({ ok: false, error: "행사에 이메일 템플릿(제목/내용)이 설정되어 있지 않습니다." }, { status: 422 });
+    }
 
     const campaign = await prisma.emailCampaign.create({
       data: {
         name,
-        templateId,
         eventId,
         userId,
         scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
         status: "DRAFT",
       },
       include: {
-        template: { select: { id: true, name: true, subject: true } },
         event: { select: { id: true, title: true } },
       },
     });

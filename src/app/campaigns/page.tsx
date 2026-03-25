@@ -210,9 +210,7 @@ export default function CampaignsPage() {
                                 <CardTop>
                                     <div>
                                         <CardTitle>{c.name}</CardTitle>
-                                        <CardSub>
-                                            {c.event.title} · 템플릿: {c.template.name}
-                                        </CardSub>
+                                        <CardSub>{c.event.title}</CardSub>
                                         {c.scheduledAt && c.status === "SCHEDULED" && (
                                             <CardSub style={{ color: "#1d4ed8" }}>
                                                 예약 발송: {formatDatetime(c.scheduledAt)}
