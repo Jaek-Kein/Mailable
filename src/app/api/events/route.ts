@@ -4,7 +4,7 @@ import { prisma } from "@/src/lib/prisma";
 import { z } from "zod";
 import { auth } from "@/src/lib/auth";
 import { EventStatus } from "@prisma/client";
-import { encryptJson, decryptJson } from "@/src/lib/crypto";
+import { encrypt, decrypt, encryptJson, decryptJson } from "@/src/lib/crypto";
 
 const schema = z.object({
   title: z.string().min(1),
@@ -30,7 +30,8 @@ export async function GET() {
 
     const decryptedEvents = events.map((e) => ({
       ...e,
-      data: e.data ? { ...e.data, payload: decryptJson(e.data.payload) } : null,
+      sheetUrl: e.sheetUrl ? decrypt(e.sheetUrl) : null,
+      data: e.data ? { ...e.data, payload: decryptJson(e.data.payload as string) } : null,
     }));
     return NextResponse.json({ ok: true, events: decryptedEvents });
   } catch (e: unknown) {
@@ -54,7 +55,7 @@ export async function POST(req: NextRequest) {
         title,
         date: date ? new Date(date) : null,
         place,
-        sheetUrl,
+        sheetUrl: sheetUrl ? encrypt(sheetUrl) : undefined,
         posterUrl,
         status: status ?? EventStatus.ONGOING,
         data: eventData ? { create: { payload: encryptJson(eventData.payload) } } : undefined,
