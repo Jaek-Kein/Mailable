@@ -673,6 +673,32 @@ export default function EventDetailPage() {
         overscan: 5,
     });
 
+    const handleSend = useCallback(async (campaignName: string) => {
+        const campaign = await createCampaign({ name: campaignName, eventId: id });
+        if (!campaign) throw new Error(useCampaignStore.getState().error ?? "캠페인 생성에 실패했습니다.");
+
+        const result = await sendCampaign(campaign.id, Array.from(checkedIndices));
+        if (!result) throw new Error(useCampaignStore.getState().error ?? "이메일 발송에 실패했습니다.");
+
+        setSendResult(result);
+        setModalOpen(false);
+        if (emailColKey) {
+            const failedEmails = new Set(result.errors.map((e) => e.email));
+            const sentAt = new Date().toISOString();
+            setDeliveryMap((prev) => {
+                const next = { ...prev };
+                for (const origIdx of checkedIndices) {
+                    const email = localRows[origIdx]?.[emailColKey]?.trim();
+                    if (!email) continue;
+                    next[email] = failedEmails.has(email)
+                        ? { status: "FAILED", sentAt: null, openedAt: null }
+                        : { status: "SENT", sentAt, openedAt: null };
+                }
+                return next;
+            });
+        }
+    }, [createCampaign, sendCampaign, checkedIndices, emailColKey, localRows, id]);
+
     if (loading) return <Page><Empty>불러오는 중...</Empty></Page>;
     if (error || !event) return <Page><ErrorMessage>{error ?? "행사를 찾을 수 없습니다."}</ErrorMessage></Page>;
 
@@ -718,32 +744,6 @@ export default function EventDetailPage() {
             return next;
         });
     }
-
-    const handleSend = useCallback(async (campaignName: string) => {
-        const campaign = await createCampaign({ name: campaignName, eventId: id });
-        if (!campaign) throw new Error(useCampaignStore.getState().error ?? "캠페인 생성에 실패했습니다.");
-
-        const result = await sendCampaign(campaign.id, Array.from(checkedIndices));
-        if (!result) throw new Error(useCampaignStore.getState().error ?? "이메일 발송에 실패했습니다.");
-
-        setSendResult(result);
-        setModalOpen(false);
-        if (emailColKey) {
-            const failedEmails = new Set(result.errors.map((e) => e.email));
-            const sentAt = new Date().toISOString();
-            setDeliveryMap((prev) => {
-                const next = { ...prev };
-                for (const origIdx of checkedIndices) {
-                    const email = localRows[origIdx]?.[emailColKey]?.trim();
-                    if (!email) continue;
-                    next[email] = failedEmails.has(email)
-                        ? { status: "FAILED", sentAt: null, openedAt: null }
-                        : { status: "SENT", sentAt, openedAt: null };
-                }
-                return next;
-            });
-        }
-    }, [createCampaign, sendCampaign, checkedIndices, emailColKey, localRows, id]);
 
     const hasTemplate = !!(event.emailSubject && event.emailContent);
 
