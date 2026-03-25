@@ -441,9 +441,26 @@ export default function EventDetailPage() {
                 setEmailSubject(data.event.emailSubject ?? "");
                 setEmailContent(data.event.emailContent ?? "");
                 const loaded: Record<string, string>[] = data.event?.data?.payload?.rows ?? [];
+                const dMap: Record<string, { status: string; sentAt: string | null; openedAt: string | null }> = data.deliveryMap ?? {};
                 setLocalRows(loaded);
-                setCheckedIndices(new Set(loaded.map((_, i) => i)));
-                setDeliveryMap(data.deliveryMap ?? {});
+                setDeliveryMap(dMap);
+
+                const SENT_STATUSES = new Set(["SENT", "DELIVERED", "OPENED", "CLICKED"]);
+                const allCols = loaded.length > 0 ? Object.keys(loaded[0]) : [];
+                const emailKey = detectCol(EMAIL_KEYS, allCols);
+                const defaultSelected = new Set(
+                    loaded
+                        .map((row, i) => ({ row, i }))
+                        .filter(({ row }) => {
+                            if (!emailKey) return true;
+                            const email = row[emailKey]?.trim();
+                            if (!email) return true;
+                            const delivery = dMap[email];
+                            return !delivery || !SENT_STATUSES.has(delivery.status);
+                        })
+                        .map(({ i }) => i)
+                );
+                setCheckedIndices(defaultSelected);
             })
             .catch((e) => setError(e.message))
             .finally(() => setLoading(false));
