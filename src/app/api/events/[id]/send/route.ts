@@ -30,7 +30,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { id: eventId } = await params;
 
   const event = await prisma.event.findFirst({
-    where: { id: eventId, userId },
+    where: { id: eventId, ownerId: userId },
     include: { data: true },
   });
 
