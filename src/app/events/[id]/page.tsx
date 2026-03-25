@@ -1266,7 +1266,7 @@ export default function EventDetailPage() {
                                                         onClick={() => handleCancelToggle(origIdx)}
                                                         title={isCancelled ? "참여 복원" : "참여 취소"}
                                                     >
-                                                        {isCancelled ? "복원" : "취소"}
+                                                        {isCancelled ? "재참여" : "참여 취소"}
                                                     </CancelBtn>
                                                 </td>
                                             </tr>
