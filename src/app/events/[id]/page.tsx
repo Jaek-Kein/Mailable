@@ -6,7 +6,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { useParams, useRouter } from "next/navigation";
 
 interface EventData {
-    payload: { rows: Record<string, string>[] };
+    payload: { rows: Record<string, string>[]; cancelledEmails?: string[] };
     version: number;
 }
 
@@ -532,6 +532,21 @@ const EditHint = styled.span`
     margin-left: 0.5rem;
 `;
 
+const CancelBtn = styled.button<{ cancelled: boolean }>`
+    appearance: none;
+    border: 1px solid ${({ cancelled }) => cancelled ? "#bbf7d0" : "#fdd3c8"};
+    background: ${({ cancelled }) => cancelled ? "#f0fdf4" : C.accentLight};
+    color: ${({ cancelled }) => cancelled ? "#16a34a" : C.accent};
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 0.72rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.15s;
+    &:hover { opacity: 0.75; }
+`;
+
 /* ────────── AttendanceTab ────────── */
 interface AttendanceTabProps {
     eventId: string;
@@ -825,6 +840,8 @@ export default function EventDetailPage() {
     const [sendResult, setSendResult] = useState<{ sentCount: number; failCount: number; total: number; errors: { email: string; reason: string }[] } | null>(null);
     const [activeTab, setActiveTab] = useState<"email" | "checkin">("email");
     const [checkinMap, setCheckinMap] = useState<Record<string, string | null>>({});
+    const [cancelledEmails, setCancelledEmails] = useState<Set<string>>(new Set());
+    const [showCancelled, setShowCancelled] = useState(false);
 
 
     useEffect(() => {
@@ -836,13 +853,16 @@ export default function EventDetailPage() {
                 const loaded: Record<string, string>[] = data.event?.data?.payload?.rows ?? [];
                 const dMap: Record<string, { status: string; sentAt: string | null; openedAt: string | null }> = data.deliveryMap ?? {};
                 const cMap: Record<string, string | null> = data.event?.data?.payload?.checkinMap ?? {};
+                const cancelledArr: string[] = data.event?.data?.payload?.cancelledEmails ?? [];
                 setLocalRows(loaded);
                 setDeliveryMap(dMap);
                 setCheckinMap(cMap);
+                setCancelledEmails(new Set(cancelledArr.map((e: string) => e.toLowerCase())));
 
                 const SENT_STATUSES = new Set(["SENT", "DELIVERED", "OPENED", "CLICKED"]);
                 const allCols = loaded.length > 0 ? Object.keys(loaded[0]) : [];
                 const emailKey = detectCol(EMAIL_KEYS, allCols);
+                const cancelledSet = new Set(cancelledArr.map((e: string) => e.toLowerCase()));
                 const defaultSelected = new Set(
                     loaded
                         .map((row, i) => ({ row, i }))
@@ -850,6 +870,7 @@ export default function EventDetailPage() {
                             if (!emailKey) return true;
                             const email = row[emailKey]?.trim();
                             if (!email) return true;
+                            if (cancelledSet.has(email.toLowerCase())) return false;
                             const delivery = dMap[email];
                             return !delivery || !SENT_STATUSES.has(delivery.status);
                         })
@@ -866,11 +887,16 @@ export default function EventDetailPage() {
     const emailColKey = useMemo(() => detectCol(EMAIL_KEYS, allColumns), [allColumns]);
     const nameColKey = useMemo(() => detectCol(NAME_KEYS, allColumns), [allColumns]);
     const filteredIndexed = useMemo(() => {
-        if (!filter.trim()) return localRows.map((r, i) => ({ row: r, origIdx: i }));
         return localRows
             .map((r, i) => ({ row: r, origIdx: i }))
-            .filter(({ row }) => displayColumns.some(({ key }) => row[key]?.toLowerCase().includes(filter.toLowerCase())));
-    }, [localRows, filter, displayColumns]);
+            .filter(({ row }) => {
+                const email = emailColKey ? row[emailColKey]?.trim().toLowerCase() : null;
+                const isCancelled = email ? cancelledEmails.has(email) : false;
+                if (isCancelled && !showCancelled) return false;
+                if (!filter.trim()) return true;
+                return displayColumns.some(({ key }) => row[key]?.toLowerCase().includes(filter.toLowerCase()));
+            });
+    }, [localRows, filter, displayColumns, cancelledEmails, showCancelled, emailColKey]);
 
     const tableContainerRef = useRef<HTMLDivElement>(null);
     const rowVirtualizer = useVirtualizer({
@@ -954,6 +980,39 @@ export default function EventDetailPage() {
         });
     }
 
+    async function handleCancelToggle(origIdx: number) {
+        if (!emailColKey) return;
+        const email = localRows[origIdx]?.[emailColKey]?.trim();
+        if (!email) return;
+        const emailLower = email.toLowerCase();
+        const isCancelled = cancelledEmails.has(emailLower);
+        const next = !isCancelled;
+
+        // 낙관적 업데이트
+        setCancelledEmails((prev) => {
+            const s = new Set(prev);
+            next ? s.add(emailLower) : s.delete(emailLower);
+            return s;
+        });
+        // 취소 시 체크 해제
+        if (next) setCheckedIndices((prev) => { const s = new Set(prev); s.delete(origIdx); return s; });
+
+        const res = await fetch(`/api/events/${id}/cancel`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, cancelled: next }),
+        });
+        const data = await res.json();
+        if (!data.ok) {
+            // 실패 시 롤백
+            setCancelledEmails((prev) => {
+                const s = new Set(prev);
+                isCancelled ? s.add(emailLower) : s.delete(emailLower);
+                return s;
+            });
+        }
+    }
+
     const hasTemplate = !!(event.emailSubject && event.emailContent);
 
     return (
@@ -1028,7 +1087,12 @@ export default function EventDetailPage() {
             <Card>
                 <Toolbar>
                     <SectionTitle style={{ margin: 0 }}>
-                        {activeTab === "checkin" ? "입장 체크" : "참가자 데이터"} {rows.length > 0 && `(${rows.length}명)`}
+                        {activeTab === "checkin" ? "입장 체크" : "참가자 데이터"}{" "}
+                        {rows.length > 0 && (
+                            cancelledEmails.size > 0
+                                ? `(${rows.length - cancelledEmails.size}명 활성 / 전체 ${rows.length}명)`
+                                : `(${rows.length}명)`
+                        )}
                         {event.data && (
                             <span style={{ fontWeight: 400, fontSize: "0.78rem", color: C.inkMuted, marginLeft: "0.5rem", fontFamily: "var(--font-sans, sans-serif)" }}>
                                 v{event.data.version}
@@ -1045,6 +1109,11 @@ export default function EventDetailPage() {
                                     value={filter}
                                     onChange={(e) => setFilter(e.target.value)}
                                 />
+                                {cancelledEmails.size > 0 && (
+                                    <GhostBtn onClick={() => setShowCancelled((v) => !v)} style={{ fontSize: "0.8rem" }}>
+                                        {showCancelled ? `취소자 숨기기 (${cancelledEmails.size})` : `취소자 보기 (${cancelledEmails.size})`}
+                                    </GhostBtn>
+                                )}
                                 <GhostBtn onClick={() => exportCsv(localRows, `${event.title}_participants.csv`)}>
                                     CSV 내보내기
                                 </GhostBtn>
@@ -1115,23 +1184,27 @@ export default function EventDetailPage() {
                                         </CheckTh>
                                         {displayColumns.map(({ key, label }) => <th key={key}>{label}</th>)}
                                         <th style={{ whiteSpace: "nowrap" }}>발송 상태</th>
+                                        <th style={{ whiteSpace: "nowrap" }}></th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {rowVirtualizer.getVirtualItems().length > 0 && (
                                         <tr style={{ height: `${rowVirtualizer.getVirtualItems()[0].start}px` }}>
-                                            <td colSpan={displayColumns.length + 2} style={{ padding: 0, border: "none" }} />
+                                            <td colSpan={displayColumns.length + 3} style={{ padding: 0, border: "none" }} />
                                         </tr>
                                     )}
                                     {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                                         const { row, origIdx } = filteredIndexed[virtualRow.index];
+                                        const rowEmail = emailColKey ? row[emailColKey]?.trim().toLowerCase() : null;
+                                        const isCancelled = rowEmail ? cancelledEmails.has(rowEmail) : false;
                                         return (
-                                            <tr key={origIdx}>
+                                            <tr key={origIdx} style={{ opacity: isCancelled ? 0.5 : 1 }}>
                                                 <CheckTd onClick={(e) => e.stopPropagation()}>
                                                     <input
                                                         type="checkbox"
                                                         checked={checkedIndices.has(origIdx)}
                                                         onChange={() => toggleRow(origIdx)}
+                                                        disabled={isCancelled}
                                                         aria-label={`행 ${origIdx + 1} 선택`}
                                                     />
                                                 </CheckTd>
@@ -1140,8 +1213,13 @@ export default function EventDetailPage() {
                                                     return (
                                                         <td
                                                             key={key}
-                                                            onClick={() => { if (!isEditing) startEdit(origIdx, key); }}
-                                                            style={{ cursor: "pointer", minWidth: "80px" }}
+                                                            onClick={() => { if (!isEditing && !isCancelled) startEdit(origIdx, key); }}
+                                                            style={{
+                                                                cursor: isCancelled ? "default" : "pointer",
+                                                                minWidth: "80px",
+                                                                textDecoration: isCancelled ? "line-through" : "none",
+                                                                color: isCancelled ? C.inkMuted : undefined,
+                                                            }}
                                                         >
                                                             {isEditing ? (
                                                                 <CellInput
@@ -1165,6 +1243,15 @@ export default function EventDetailPage() {
                                                         info={emailColKey ? deliveryMap[row[emailColKey]?.trim()] : undefined}
                                                     />
                                                 </td>
+                                                <td style={{ whiteSpace: "nowrap", paddingRight: "8px" }} onClick={(e) => e.stopPropagation()}>
+                                                    <CancelBtn
+                                                        cancelled={isCancelled}
+                                                        onClick={() => handleCancelToggle(origIdx)}
+                                                        title={isCancelled ? "참여 복원" : "참여 취소"}
+                                                    >
+                                                        {isCancelled ? "복원" : "취소"}
+                                                    </CancelBtn>
+                                                </td>
                                             </tr>
                                         );
                                     })}
@@ -1173,7 +1260,7 @@ export default function EventDetailPage() {
                                         const paddingBottom = rowVirtualizer.getTotalSize() - last.end;
                                         return paddingBottom > 0 ? (
                                             <tr style={{ height: `${paddingBottom}px` }}>
-                                                <td colSpan={displayColumns.length + 2} style={{ padding: 0, border: "none" }} />
+                                                <td colSpan={displayColumns.length + 3} style={{ padding: 0, border: "none" }} />
                                             </tr>
                                         ) : null;
                                     })()}

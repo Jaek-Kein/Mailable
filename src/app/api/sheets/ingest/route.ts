@@ -4,7 +4,7 @@ import { parseSheetUrl } from "@/src/lib/gsheets/parseUrl";
 import { fetchCsv } from "@/src/lib/gsheets/fetchCsv";
 import { csvToJson } from "@/src/lib/gsheets/csvToJson";
 import { prisma } from "@/src/lib/prisma";
-import { encryptJson } from "@/src/lib/crypto";
+import { encryptJson, decryptJson } from "@/src/lib/crypto";
 
 const schema = z.object({
     eventId: z.string().min(1),
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
         const TS_KEYS = ["타임스탬프", "timestamp", "제출 시간", "응답 날짜", "응답시간"];
         const ALLOWED_KEYS = [...EMAIL_KEYS, ...NAME_KEYS, ...TS_KEYS];
 
-        const rows = allRows.map((row) =>
+        const filteredRows = allRows.map((row) =>
             Object.fromEntries(
                 Object.entries(row).filter(([k]) =>
                     ALLOWED_KEYS.some((key) => k.toLowerCase() === key.toLowerCase())
@@ -50,7 +50,26 @@ export async function POST(req: NextRequest) {
             )
         );
 
-        const encryptedPayload = encryptJson({ rows });
+        // 기존 취소자 목록 유지: 재수집 시 취소된 참가자는 다시 추가되지 않음
+        const existing = await prisma.eventData.findUnique({ where: { eventId }, select: { payload: true } });
+        let cancelledEmails: string[] = [];
+        let checkinMap: Record<string, string | null> = {};
+        if (existing) {
+            const prev = decryptJson<{ cancelledEmails?: string[]; checkinMap?: Record<string, string | null> }>(existing.payload as string);
+            cancelledEmails = Array.isArray(prev?.cancelledEmails) ? prev.cancelledEmails : [];
+            checkinMap = prev?.checkinMap ?? {};
+        }
+
+        const cancelledSet = new Set(cancelledEmails.map((e) => e.toLowerCase()));
+        const rows = filteredRows.filter((row) => {
+            const emailVal = Object.entries(row).find(([k]) =>
+                EMAIL_KEYS.some((key) => k.toLowerCase() === key.toLowerCase())
+            )?.[1];
+            if (!emailVal) return true;
+            return !cancelledSet.has(emailVal.toLowerCase().trim());
+        });
+
+        const encryptedPayload = encryptJson({ rows, cancelledEmails, checkinMap });
 
         const saved = await prisma.eventData.upsert({
             where: { eventId },
