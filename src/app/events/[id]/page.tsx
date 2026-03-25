@@ -554,10 +554,17 @@ interface AttendanceTabProps {
     emailColKey: string | null;
     nameColKey: string | null;
     initialCheckinMap: Record<string, string | null>;
+    onCheckinMapChange?: (map: Record<string, string | null>) => void;
 }
 
-const AttendanceTab = memo(function AttendanceTab({ eventId, rows, emailColKey, nameColKey, initialCheckinMap }: AttendanceTabProps) {
+const AttendanceTab = memo(function AttendanceTab({ eventId, rows, emailColKey, nameColKey, initialCheckinMap, onCheckinMapChange }: AttendanceTabProps) {
     const [checkinMap, setCheckinMap] = useState<Record<string, string | null>>(initialCheckinMap);
+
+    useEffect(() => {
+        setCheckinMap(initialCheckinMap);
+    // initialCheckinMap 레퍼런스가 바뀔 때만 동기화 (최초 로드 시)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
     const [filter, setFilter] = useState("");
     const [resetting, setResetting] = useState(false);
 
@@ -581,7 +588,11 @@ const AttendanceTab = memo(function AttendanceTab({ eventId, rows, emailColKey, 
     async function toggleCheckin(email: string, current: boolean) {
         const next = !current;
         // 낙관적 업데이트
-        setCheckinMap((prev) => ({ ...prev, [email]: next ? new Date().toISOString() : null }));
+        setCheckinMap((prev) => {
+            const updated = { ...prev, [email]: next ? new Date().toISOString() : null };
+            onCheckinMapChange?.(updated);
+            return updated;
+        });
         const res = await fetch(`/api/events/${eventId}/checkin`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -590,7 +601,11 @@ const AttendanceTab = memo(function AttendanceTab({ eventId, rows, emailColKey, 
         const data = await res.json();
         if (!data.ok) {
             // 실패 시 롤백
-            setCheckinMap((prev) => ({ ...prev, [email]: current ? new Date().toISOString() : null }));
+            setCheckinMap((prev) => {
+                const rolled = { ...prev, [email]: current ? new Date().toISOString() : null };
+                onCheckinMapChange?.(rolled);
+                return rolled;
+            });
         }
     }
 
@@ -599,6 +614,7 @@ const AttendanceTab = memo(function AttendanceTab({ eventId, rows, emailColKey, 
         setResetting(true);
         await fetch(`/api/events/${eventId}/checkin`, { method: "DELETE" });
         setCheckinMap({});
+        onCheckinMapChange?.({});
         setResetting(false);
     }
 
@@ -1137,6 +1153,7 @@ export default function EventDetailPage() {
                         emailColKey={emailColKey}
                         nameColKey={nameColKey}
                         initialCheckinMap={checkinMap}
+                        onCheckinMapChange={setCheckinMap}
                     />
                 ) : rows.length === 0 ? (
                     <Empty>수집된 참가자 데이터가 없습니다. 행사 카드에서 Sheets URL로 데이터를 수집하세요.</Empty>
