@@ -6,8 +6,6 @@ import { prisma } from "@/src/lib/prisma";
 
 const patchSchema = z.object({
   name: z.string().min(1).optional(),
-  scheduledAt: z.string().datetime().nullable().optional(),
-  status: z.enum(["DRAFT", "SCHEDULED"]).optional(),
 });
 
 async function getOwnedCampaign(id: string, userId: string) {
@@ -53,8 +51,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       where: { id },
       data: {
         ...(data.name && { name: data.name }),
-        ...(data.scheduledAt !== undefined && { scheduledAt: data.scheduledAt ? new Date(data.scheduledAt) : null }),
-        ...(data.status && { status: data.status }),
       },
       include: {
         template: { select: { id: true, name: true, subject: true } },

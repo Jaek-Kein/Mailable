@@ -289,10 +289,8 @@ export default function EventDetailPage() {
     const [modalOpen, setModalOpen] = useState(false);
     const [campaignName, setCampaignName] = useState("");
     const [selectedTemplateId, setSelectedTemplateId] = useState("");
-    const [sendMode, setSendMode] = useState<"now" | "schedule">("now");
-    const [scheduledAt, setScheduledAt] = useState("");
     const [sending, setSending] = useState(false);
-    const [sendResult, setSendResult] = useState<{ sentCount: number; failCount: number; total: number; scheduled?: boolean } | null>(null);
+    const [sendResult, setSendResult] = useState<{ sentCount: number; failCount: number; total: number } | null>(null);
     const [campaignError, setCampaignError] = useState<string | null>(null);
 
     const { templates, fetchTemplates } = useTemplateStore();
@@ -351,44 +349,23 @@ export default function EventDetailPage() {
             setCampaignError("캠페인 이름과 템플릿을 선택하세요.");
             return;
         }
-        if (sendMode === "schedule" && !scheduledAt) {
-            setCampaignError("예약 발송 날짜/시간을 선택하세요.");
-            return;
-        }
         setSending(true);
         setCampaignError(null);
 
-        const campaign = await createCampaign({
-            name: campaignName,
-            templateId: selectedTemplateId,
-            eventId: id,
-            scheduledAt: sendMode === "schedule" ? new Date(scheduledAt).toISOString() : undefined,
-        });
+        const campaign = await createCampaign({ name: campaignName, templateId: selectedTemplateId, eventId: id });
         if (!campaign) {
             setCampaignError("캠페인 생성에 실패했습니다.");
             setSending(false);
             return;
         }
 
-        if (sendMode === "schedule") {
-            // 예약 발송: status를 SCHEDULED로 변경
-            await fetch(`/api/campaigns/${campaign.id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ status: "SCHEDULED", scheduledAt: new Date(scheduledAt).toISOString() }),
-            });
-            setSending(false);
-            setSendResult({ sentCount: 0, failCount: 0, total: rows.length, scheduled: true });
+        const result = await sendCampaign(campaign.id);
+        setSending(false);
+        if (result) {
+            setSendResult(result);
             setModalOpen(false);
         } else {
-            const result = await sendCampaign(campaign.id);
-            setSending(false);
-            if (result) {
-                setSendResult(result);
-                setModalOpen(false);
-            } else {
-                setCampaignError("이메일 발송에 실패했습니다.");
-            }
+            setCampaignError("이메일 발송에 실패했습니다.");
         }
     }
 
@@ -398,10 +375,8 @@ export default function EventDetailPage() {
 
             {sendResult && (
                 <SuccessMsg>
-                    {sendResult.scheduled
-                        ? `예약 완료: ${sendResult.total}명에게 예약 발송이 등록되었습니다.`
-                        : `발송 완료: ${sendResult.sentCount}/${sendResult.total}명 성공${sendResult.failCount > 0 ? ` (실패 ${sendResult.failCount}명)` : ""}`
-                    }
+                    발송 완료: {sendResult.sentCount}/{sendResult.total}명 성공
+                    {sendResult.failCount > 0 && ` (실패 ${sendResult.failCount}명)`}
                 </SuccessMsg>
             )}
 
@@ -445,7 +420,7 @@ export default function EventDetailPage() {
                                 <GhostBtn onClick={() => exportCsv(localRows, `${event.title}_participants.csv`)}>
                                     CSV 내보내기
                                 </GhostBtn>
-                                <PrimaryBtn onClick={() => { setModalOpen(true); setSendResult(null); setCampaignName(""); setSelectedTemplateId(""); setSendMode("now"); setScheduledAt(""); }}>
+                                <PrimaryBtn onClick={() => { setModalOpen(true); setSendResult(null); setCampaignName(""); setSelectedTemplateId(""); }}>
                                     이메일 발송
                                 </PrimaryBtn>
                             </>
@@ -544,45 +519,11 @@ export default function EventDetailPage() {
                                     </p>
                                 )}
                             </Field>
-                            <Field>
-                                <Label>발송 방식</Label>
-                                <div style={{ display: "flex", gap: "0.75rem" }}>
-                                    {(["now", "schedule"] as const).map((mode) => (
-                                        <label key={mode} style={{ display: "flex", alignItems: "center", gap: "0.4rem", cursor: "pointer", fontSize: "0.875rem" }}>
-                                            <input
-                                                type="radio"
-                                                name="sendMode"
-                                                value={mode}
-                                                checked={sendMode === mode}
-                                                onChange={() => setSendMode(mode)}
-                                            />
-                                            {mode === "now" ? "즉시 발송" : "예약 발송"}
-                                        </label>
-                                    ))}
-                                </div>
-                            </Field>
-                            {sendMode === "schedule" && (
-                                <Field>
-                                    <Label htmlFor="scheduled-at">예약 일시 *</Label>
-                                    <Input
-                                        id="scheduled-at"
-                                        type="datetime-local"
-                                        value={scheduledAt}
-                                        onChange={(e) => setScheduledAt(e.target.value)}
-                                        min={new Date().toISOString().slice(0, 16)}
-                                    />
-                                </Field>
-                            )}
                             {campaignError && <ErrorMessage>{campaignError}</ErrorMessage>}
                             <ModalFooter>
                                 <GhostBtn type="button" onClick={() => setModalOpen(false)}>취소</GhostBtn>
                                 <PrimaryBtn type="submit" disabled={sending}>
-                                    {sending
-                                        ? (sendMode === "now" ? "발송 중..." : "등록 중...")
-                                        : sendMode === "now"
-                                            ? `${rows.length}명에게 즉시 발송`
-                                            : "예약 등록"
-                                    }
+                                    {sending ? "발송 중..." : `${rows.length}명에게 발송`}
                                 </PrimaryBtn>
                             </ModalFooter>
                         </form>
