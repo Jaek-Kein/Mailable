@@ -95,6 +95,7 @@ const Toolbar = styled.div`
     position: absolute;
     top: 8px;
     right: 8px;
+    z-index: 1;
     display: flex;
     gap: 6px;
     button {
