@@ -3,7 +3,12 @@
     "allow": [
       "Bash(pnpm test:*)",
       "Bash(pnpm run:*)",
-      "Bash(grep -A5 '\"\"scripts\"\"' package.json)"
+      "Bash(grep -A5 '\"\"scripts\"\"' package.json)",
+      "Bash(pnpm outdated:*)",
+      "Bash(pnpm update:*)",
+      "Bash(pnpm approve-builds:*)",
+      "Bash(find z:/programming/event-auto-mailing/mailable/node_modules/.pnpm -name config.d.ts -path */prisma/*)",
+      "Bash(find z:/programming/event-auto-mailing/mailable/node_modules/.pnpm -name *.d.ts -path */@prisma/config*)"
     ]
   }
 }
