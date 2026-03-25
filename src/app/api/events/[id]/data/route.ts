@@ -7,7 +7,7 @@ import { prisma } from "@/src/lib/prisma";
 
 const patchSchema = z.object({
   rowIndex: z.number().int().min(0),
-  updates: z.record(z.string()),
+  updates: z.record(z.string(), z.string()),
 });
 
 export async function PATCH(

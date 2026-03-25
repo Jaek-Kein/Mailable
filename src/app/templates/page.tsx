@@ -288,7 +288,7 @@ export default function TemplatesPage() {
       ) : templates.length === 0 ? (
         <Empty>
           아직 템플릿이 없습니다.<br />
-          "새 템플릿" 버튼으로 첫 템플릿을 만들어 보세요.
+          &quot;새 템플릿&quot; 버튼으로 첫 템플릿을 만들어 보세요.
         </Empty>
       ) : (
         <Grid>

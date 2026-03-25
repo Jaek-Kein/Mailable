@@ -25,7 +25,7 @@ interface EventStore {
     removeEvent: (id: string) => Promise<void>;
 }
 
-export const useEventStore = create<EventStore>((set, get) => ({
+export const useEventStore = create<EventStore>((set) => ({
     events: [],
     loading: false,
     error: undefined,

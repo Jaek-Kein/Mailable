@@ -14,7 +14,7 @@ const schema = z.object({
   eventData: z.object({ payload: z.any() }).optional(),
 });
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     const session = await auth();
     const ownerId = session?.user?.id;
@@ -27,8 +27,9 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json({ ok: true, events });
-  } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e.message ?? String(e) }, { status: 500 });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }
 }
 
@@ -55,7 +56,8 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ ok: true, data: created });
-  } catch (e: any) {
-    return NextResponse.json({ ok:false, error: e.message ?? String(e) }, { status: 400 });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ ok: false, error: msg }, { status: 400 });
   }
 }

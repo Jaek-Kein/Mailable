@@ -3,7 +3,7 @@ import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
 
 export async function GET(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -28,13 +28,14 @@ export async function GET(
     }
 
     return NextResponse.json({ ok: true, event });
-  } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e.message ?? String(e) }, { status: 500 });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }
 }
 
 export async function DELETE(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -46,7 +47,6 @@ export async function DELETE(
 
     const { id } = await params;
 
-    // 본인 소유 행사인지 확인 후 삭제
     const event = await prisma.event.findUnique({ where: { id } });
     if (!event) {
       return NextResponse.json({ ok: false, error: "not found" }, { status: 404 });
@@ -58,7 +58,8 @@ export async function DELETE(
     await prisma.event.delete({ where: { id } });
 
     return NextResponse.json({ ok: true });
-  } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e.message ?? String(e) }, { status: 500 });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }
 }

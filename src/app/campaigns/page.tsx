@@ -149,11 +149,6 @@ const SummaryCard = styled.div`
     padding: 1rem 1.25rem;
 `;
 
-function pct(a: number, b: number) {
-    if (b === 0) return "—";
-    return `${Math.round((a / b) * 100)}%`;
-}
-
 function formatDatetime(v: string | null) {
     if (!v) return "—";
     const d = new Date(v);
