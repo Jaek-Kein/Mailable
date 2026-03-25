@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Providers from './Providers';
-import Nav from '@/components/Nav';
+import Nav from '@/src/components/Nav';
 
 export const metadata: Metadata = {
   title: 'EventSender | 행사 자동 메일링',

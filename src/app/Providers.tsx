@@ -1,16 +1,19 @@
 // src/app/Providers.tsx
 'use client';
 
+import { SessionProvider } from 'next-auth/react';
 import { ThemeProvider } from '@emotion/react';
-import { theme } from '@/styles/theme';
+import { theme } from '@/src/styles/theme';
 import EmotionRegistry from './EmotionRegistry';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <EmotionRegistry>
-      <ThemeProvider theme={theme}>
-        {children}
-      </ThemeProvider>
-    </EmotionRegistry>
+    <SessionProvider>
+      <EmotionRegistry>
+        <ThemeProvider theme={theme}>
+          {children}
+        </ThemeProvider>
+      </EmotionRegistry>
+    </SessionProvider>
   );
 }

@@ -1,21 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
-import { parseSheetUrl } from "@/lib/gsheets/parseUrl";
-import { fetchCsv } from "@/lib/gsheets/fetchCsv";
-import { csvToJson } from "@/lib/gsheets/csvToJson";
-import { prisma } from "@/lib/prisma";
+import { z } from "zod";
+import { parseSheetUrl } from "@/src/lib/gsheets/parseUrl";
+import { fetchCsv } from "@/src/lib/gsheets/fetchCsv";
+import { csvToJson } from "@/src/lib/gsheets/csvToJson";
+import { prisma } from "@/src/lib/prisma";
+
+const schema = z.object({
+    eventId: z.string().min(1),
+    sheetUrl: z.string().url("유효한 URL 형식이 아닙니다."),
+});
 
 export async function POST(req: NextRequest) {
-  
+
     try {
-        const { eventId, sheetUrl } = (await req.json()) as {
-            eventId: string;
-            sheetUrl: string;
-        };
-        if (!eventId || !sheetUrl)
+        const body = await req.json();
+        const parsed = schema.safeParse(body);
+        if (!parsed.success) {
             return NextResponse.json(
-                { ok: false, error: "eventId, sheetUrl required" },
+                { ok: false, error: parsed.error.issues[0].message },
                 { status: 400 }
             );
+        }
+        const { eventId, sheetUrl } = parsed.data;
 
         const { spreadsheetId, gid, isExportCsv } = parseSheetUrl(sheetUrl);
         if (!spreadsheetId)

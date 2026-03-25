@@ -1,7 +1,8 @@
 "use client";
 
-import { useSheetStore } from "@/store/useSheetsStore";
+import { useSheetStore } from "@/src/store/useSheetsStore";
 import styled from "@emotion/styled";
+import { useRouter } from "next/navigation";
 import { CSSProperties } from "react";
 
 export type EventStatus = "scheduled" | "closed";
@@ -151,10 +152,12 @@ export default function EventCard({
     sheetUrl,
 }: EventCardProps) {
     const { ingestFromSheetUrl, loading } = useSheetStore();
+    const router = useRouter();
 
     const onClick = async () => {
         if (loading) return;
-        await ingestFromSheetUrl( sheetUrl, id);
+        if (sheetUrl) await ingestFromSheetUrl(sheetUrl, id);
+        router.push(`/events/${id}`);
     };
     return (
         <Wrap className={className} style={style}>
