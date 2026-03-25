@@ -9,21 +9,20 @@ import { useEventStore } from "@/src/store/useEventStore";
 
 const Main = styled.main`
     max-width: 1200px;
-    margin: 1.25rem auto;
-    padding: 0 1rem;
+    margin: 2rem auto;
+    padding: 0 1.25rem;
     display: grid;
-    grid-template-columns: 1fr;
-    gap: 1rem;
+    gap: 1.5rem;
 `;
 
 const Section = styled.section`
     display: grid;
-    gap: 1rem;
+    gap: 1.25rem;
 `;
 
 const Grid3 = styled.div`
     display: grid;
-    gap: 1.5rem;
+    gap: 1rem;
     width: 100%;
     grid-template-columns: repeat(1, minmax(0, 1fr));
     @media (min-width: 768px) {
@@ -31,33 +30,85 @@ const Grid3 = styled.div`
     }
 `;
 
-const LoadingMessage = styled.div`
-    text-align: center;
-    padding: 2rem;
-    color: #64748b;
+const PageHeader = styled.header`
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
 `;
 
-const ErrorMessage = styled.div`
-    text-align: center;
-    padding: 2rem;
-    color: #ef4444;
-    background: #fef2f2;
-    border-radius: 8px;
-    margin: 1rem 0;
+const HeadingGroup = styled.div`
+    display: grid;
+    gap: 0.2rem;
+`;
+
+const PageTitle = styled.h1`
+    font-family: var(--font-serif, 'DM Serif Display', serif);
+    font-size: 1.75rem;
+    color: ${({ theme }) => theme.color.text};
+    margin: 0;
+    letter-spacing: -0.3px;
+`;
+
+const PageSub = styled.p`
+    font-size: 0.875rem;
+    color: ${({ theme }) => theme.color.muted};
+    margin: 0;
+`;
+
+const SectionTitle = styled.h2`
+    font-family: var(--font-serif, 'DM Serif Display', serif);
+    font-size: 1.25rem;
+    color: ${({ theme }) => theme.color.text};
+    margin: 0;
+    letter-spacing: -0.2px;
 `;
 
 const AddButton = styled.button`
     appearance: none;
-    background: #2563eb;
+    background: ${({ theme }) => theme.color.primary};
     border: none;
-    border-radius: 8px;
+    border-radius: 10px;
     padding: 0.5rem 1.1rem;
-    font-size: 0.9rem;
-    font-weight: 600;
+    font-size: 0.875rem;
+    font-weight: 500;
     color: #fff;
     cursor: pointer;
     white-space: nowrap;
-    &:hover { background: #1d4ed8; }
+    transition: background 0.15s, transform 0.1s;
+
+    &:hover {
+        background: #2d2d4a;
+        transform: translateY(-1px);
+    }
+
+    &:active { transform: translateY(0); }
+`;
+
+const LoadingMessage = styled.div`
+    text-align: center;
+    padding: 3rem;
+    color: ${({ theme }) => theme.color.muted};
+    font-size: 0.9rem;
+`;
+
+const ErrorMessage = styled.div`
+    padding: 0.9rem 1.1rem;
+    color: ${({ theme }) => theme.color.danger};
+    background: #fef2f2;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: 10px;
+    font-size: 0.875rem;
+`;
+
+const EmptyState = styled.div`
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 3rem 1rem;
+    color: ${({ theme }) => theme.color.muted};
+    font-size: 0.9rem;
+    border: 1px dashed ${({ theme }) => theme.color.border};
+    border-radius: ${({ theme }) => theme.radius.md};
 `;
 
 export default function Page() {
@@ -68,7 +119,6 @@ export default function Page() {
         fetchEvents();
     }, [fetchEvents]);
 
-    // 실제 EventData.payload.rows 에서 참가자 수 집계
     const ongoingEvents = events.filter(e => e.status !== 'CLOSED').length;
     const totalParticipants = events.reduce(
         (sum, e) => sum + (e.data?.payload?.rows?.length ?? 0),
@@ -90,33 +140,17 @@ export default function Page() {
         )}
         <Main>
             <Section aria-labelledby="dashboard-heading">
-                <header style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem" }}>
-                    <div>
-                        <h1
-                            id="dashboard-heading"
-                            style={{ fontSize: "1.35rem", margin: 0 }}
-                        >
-                            대시보드
-                        </h1>
-                        <p
-                            style={{
-                                color: "#64748b",
-                                margin: "0.25rem 0 0.75rem",
-                            }}
-                        >
-                            행사·메일 발송 현황을 한눈에 확인하세요.
-                        </p>
-                    </div>
+                <PageHeader>
+                    <HeadingGroup>
+                        <PageTitle id="dashboard-heading">대시보드</PageTitle>
+                        <PageSub>행사·메일 발송 현황을 한눈에 확인하세요.</PageSub>
+                    </HeadingGroup>
                     <AddButton type="button" onClick={() => setShowModal(true)}>
                         + 행사 추가
                     </AddButton>
-                </header>
+                </PageHeader>
 
-                {error && (
-                    <ErrorMessage>
-                        {error}
-                    </ErrorMessage>
-                )}
+                {error && <ErrorMessage>{error}</ErrorMessage>}
 
                 <Grid3 aria-label="핵심 지표">
                     <StatCard label="진행 중 행사" value={ongoingEvents} />
@@ -124,19 +158,16 @@ export default function Page() {
                     <StatCard label="총 참가자 수" value={totalParticipants} tone="success" />
                 </Grid3>
 
-                <header>
-                    <h1
-                        style={{ fontSize: "1.35rem", margin: 0 }}
-                    >
-                        행사 목록
-                    </h1>
-                </header>
+                <SectionTitle>행사 목록</SectionTitle>
 
                 <Grid3 aria-label="이벤트 카드">
                     {events.length === 0 && !loading ? (
-                        <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '2rem', color: '#64748b' }}>
-                            등록된 행사가 없습니다.
-                        </div>
+                        <EmptyState>
+                            등록된 행사가 없습니다.<br />
+                            <span style={{ fontSize: '0.8rem', marginTop: '0.25rem', display: 'block' }}>
+                                위의 행사 추가 버튼으로 첫 행사를 등록해 보세요.
+                            </span>
+                        </EmptyState>
                     ) : (
                         events.map((ev) => (
                             <EventCard

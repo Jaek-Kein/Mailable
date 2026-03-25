@@ -1,21 +1,25 @@
 export const theme = {
   color: {
-    bg: '#f7f8fa',
+    bg: '#faf9f7',
     card: '#ffffff',
-    text: '#0f172a',
-    sub: '#475569',
-    primary: '#2563eb',
-    border: '#e2e8f0',
+    text: '#1a1a2e',
+    sub: '#3d3d5c',
+    muted: '#8888a8',
+    primary: '#1a1a2e',
+    accent: '#e8533a',
+    accentLight: '#fdf1ee',
+    gold: '#c9a84c',
+    border: '#e2dfd8',
     success: '#16a34a',
     warning: '#f59e0b',
     danger: '#ef4444',
   },
   radius: {
-    md: '14px',
-    lg: '20px',
+    md: '12px',
+    lg: '16px',
   },
   shadow: {
-    card: '0 6px 20px rgba(2, 6, 23, 0.06)',
+    card: '0 4px 16px rgba(26, 26, 46, 0.07)',
   },
   space: (n: number) => `${4 * n}px`,
 } as const;

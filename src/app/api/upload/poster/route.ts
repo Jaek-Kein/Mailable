@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     const filename = `posters/${session.user.id}/${Date.now()}.${ext}`;
 
     const blob = await put(filename, buffer, {
-      access: "public",
+      access: "public", // 스토어가 Public으로 설정되어 있어야 함 (Vercel 대시보드 → Storage → Blob → Settings → Access)
       contentType: file.type,
       token: process.env.BLOB_READ_WRITE_TOKEN,
     });

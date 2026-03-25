@@ -23,123 +23,161 @@ interface Event {
     data: EventData | null;
 }
 
+/* ────────── Palette (mirrors Login design tokens) ────────── */
+const C = {
+    ink: "#1a1a2e",
+    inkSoft: "#3d3d5c",
+    inkMuted: "#8888a8",
+    paper: "#faf9f7",
+    accent: "#e8533a",
+    accentLight: "#fdf1ee",
+    border: "#e2dfd8",
+    card: "#ffffff",
+} as const;
+
 /* ────────── Styles ────────── */
 const Page = styled.main`
     max-width: 960px;
     margin: 2rem auto;
-    padding: 0 1rem;
+    padding: 0 1.25rem;
     display: grid;
     gap: 1.5rem;
 `;
 
 const Card = styled.section`
-    background: #fff;
-    border: 1px solid #e2e8f0;
+    background: ${C.card};
+    border: 1px solid ${C.border};
     border-radius: 12px;
     padding: 1.5rem;
     display: grid;
     gap: 0.75rem;
+    box-shadow: 0 4px 16px rgba(26, 26, 46, 0.06);
 `;
 
-const Title = styled.h1`
+const PageTitle = styled.h1`
     margin: 0;
-    font-size: 1.5rem;
-    color: #0f172a;
+    font-family: var(--font-serif, 'DM Serif Display', serif);
+    font-size: 1.6rem;
+    color: ${C.ink};
+    letter-spacing: -0.3px;
 `;
 
 const MetaRow = styled.div`
     display: flex;
-    gap: 1.5rem;
+    gap: 1.25rem;
     flex-wrap: wrap;
-    font-size: 0.9rem;
-    color: #475569;
+    font-size: 0.875rem;
+    color: ${C.inkMuted};
+
+    a { color: ${C.accent}; text-decoration: none; &:hover { text-decoration: underline; } }
 `;
 
 const Badge = styled.span<{ status: "ONGOING" | "CLOSED" }>`
     display: inline-block;
     padding: 2px 10px;
     border-radius: 999px;
-    font-size: 0.78rem;
+    font-size: 0.75rem;
     font-weight: 600;
-    background: ${({ status }) => (status === "ONGOING" ? "#dcfce7" : "#f1f5f9")};
-    color: ${({ status }) => (status === "ONGOING" ? "#16a34a" : "#475569")};
+    background: ${({ status }) => status === "ONGOING" ? "#dcfce7" : "#f1f5f0"};
+    color: ${({ status }) => status === "ONGOING" ? "#16a34a" : C.inkMuted};
 `;
 
 const SectionTitle = styled.h2`
-    margin: 0 0 0.5rem;
-    font-size: 1rem;
-    color: #0f172a;
+    margin: 0 0 0.25rem;
+    font-family: var(--font-serif, 'DM Serif Display', serif);
+    font-size: 1.05rem;
+    color: ${C.ink};
 `;
 
 const Table = styled.table`
     width: 100%;
     border-collapse: collapse;
     font-size: 0.875rem;
+
     th, td {
         text-align: left;
         padding: 8px 12px;
-        border-bottom: 1px solid #e2e8f0;
+        border-bottom: 1px solid ${C.border};
     }
     th {
-        background: #f8fafc;
-        color: #475569;
-        font-weight: 600;
+        background: ${C.paper};
+        color: ${C.inkMuted};
+        font-weight: 500;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
     }
     tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #faf9f7; }
 `;
 
 const FilterInput = styled.input`
-    border: 1px solid #e2e8f0;
+    border: 1px solid ${C.border};
     border-radius: 8px;
     padding: 7px 12px;
     font-size: 0.875rem;
-    width: 240px;
-    &:focus { outline: 2px solid #2563eb; outline-offset: 1px; }
+    font-family: var(--font-sans, sans-serif);
+    width: 220px;
+    background: ${C.paper};
+    color: ${C.ink};
+    outline: none;
+
+    &:focus {
+        border-color: ${C.accent};
+        box-shadow: 0 0 0 3px ${C.accentLight};
+        background: #fff;
+    }
 `;
 
 const Empty = styled.div`
-    color: #94a3b8;
+    color: ${C.inkMuted};
     font-size: 0.875rem;
-    padding: 1rem 0;
+    padding: 1.5rem 0;
+    line-height: 1.6;
 `;
 
 const BackButton = styled.button`
     appearance: none;
-    border: 1px solid #e2e8f0;
-    background: #fff;
+    border: 1px solid ${C.border};
+    background: ${C.card};
     border-radius: 8px;
     padding: 6px 14px;
     font-size: 0.875rem;
     cursor: pointer;
-    color: #475569;
+    color: ${C.inkSoft};
     width: fit-content;
-    &:hover { background: #f8fafc; }
+    transition: background 0.15s;
+    &:hover { background: ${C.paper}; }
 `;
 
 const GhostBtn = styled.button`
     appearance: none;
     background: transparent;
-    color: #475569;
-    border: 1px solid #e2e8f0;
+    color: ${C.inkSoft};
+    border: 1px solid ${C.border};
     border-radius: 8px;
     padding: 6px 12px;
-    font-size: 0.8rem;
+    font-size: 0.82rem;
     cursor: pointer;
-    &:hover { background: #f8fafc; }
+    transition: background 0.15s;
+    &:hover { background: ${C.paper}; }
 `;
 
 const PrimaryBtn = styled.button`
     appearance: none;
-    background: #2563eb;
+    background: ${C.ink};
     color: #fff;
     border: none;
     border-radius: 8px;
     padding: 7px 14px;
     font-size: 0.875rem;
-    font-weight: 600;
+    font-weight: 500;
     cursor: pointer;
-    &:hover { background: #1d4ed8; }
-    &:disabled { opacity: 0.5; cursor: not-allowed; }
+    transition: background 0.15s, transform 0.1s;
+
+    &:hover { background: #2d2d4a; transform: translateY(-1px); }
+    &:active { transform: translateY(0); }
+    &:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 `;
 
 const Toolbar = styled.div`
@@ -152,67 +190,85 @@ const Toolbar = styled.div`
 `;
 
 const ErrorMessage = styled.div`
-    color: #ef4444;
+    color: #dc2626;
     background: #fef2f2;
+    border: 1px solid rgba(220, 38, 38, 0.2);
     border-radius: 8px;
-    padding: 1rem;
+    padding: 0.9rem 1rem;
+    font-size: 0.875rem;
 `;
 
 const SuccessMsg = styled.div`
-    color: #16a34a;
-    background: #dcfce7;
+    color: #15803d;
+    background: #f0fdf4;
+    border: 1px solid rgba(21, 128, 61, 0.2);
     border-radius: 8px;
     padding: 0.75rem 1rem;
     font-size: 0.875rem;
 `;
 
 /* ────────── Template editor styles ────────── */
-const TemplateField = styled.div`
-    display: grid;
-    gap: 0.4rem;
-`;
+const TemplateField = styled.div`display: grid; gap: 0.4rem;`;
 
 const TemplateLabel = styled.label`
     font-size: 0.8rem;
-    font-weight: 600;
-    color: #475569;
+    font-weight: 500;
+    color: ${C.inkSoft};
 `;
 
 const TemplateInput = styled.input`
-    border: 1px solid #e2e8f0;
+    border: 1px solid ${C.border};
     border-radius: 8px;
     padding: 8px 12px;
     font-size: 0.875rem;
+    font-family: var(--font-sans, sans-serif);
     width: 100%;
     box-sizing: border-box;
-    &:focus { outline: 2px solid #2563eb; outline-offset: 1px; }
+    background: ${C.paper};
+    color: ${C.ink};
+    outline: none;
+
+    &:focus {
+        border-color: ${C.accent};
+        box-shadow: 0 0 0 3px ${C.accentLight};
+        background: #fff;
+    }
 `;
 
 const TemplateTextarea = styled.textarea`
-    border: 1px solid #e2e8f0;
+    border: 1px solid ${C.border};
     border-radius: 8px;
     padding: 10px 12px;
     font-size: 0.875rem;
+    font-family: var(--font-sans, sans-serif);
     width: 100%;
     box-sizing: border-box;
     resize: vertical;
     min-height: 180px;
-    font-family: inherit;
     line-height: 1.6;
-    &:focus { outline: 2px solid #2563eb; outline-offset: 1px; }
+    background: ${C.paper};
+    color: ${C.ink};
+    outline: none;
+
+    &:focus {
+        border-color: ${C.accent};
+        box-shadow: 0 0 0 3px ${C.accentLight};
+        background: #fff;
+    }
 `;
 
 const PlaceholderHint = styled.p`
     margin: 0;
     font-size: 0.76rem;
-    color: #94a3b8;
+    color: ${C.inkMuted};
 `;
 
 /* ────────── Campaign Modal ────────── */
 const Overlay = styled.div`
     position: fixed;
     inset: 0;
-    background: rgba(15, 23, 42, 0.45);
+    background: rgba(26, 26, 46, 0.5);
+    backdrop-filter: blur(3px);
     display: grid;
     place-items: center;
     z-index: 50;
@@ -220,40 +276,49 @@ const Overlay = styled.div`
 `;
 
 const Modal = styled.div`
-    background: #fff;
+    background: ${C.card};
+    border: 1px solid ${C.border};
     border-radius: 16px;
     padding: 1.75rem;
     width: 100%;
     max-width: 480px;
     display: grid;
     gap: 1.25rem;
+    box-shadow: 0 16px 48px rgba(26, 26, 46, 0.18);
 `;
 
 const ModalTitle = styled.h2`
     margin: 0;
-    font-size: 1.1rem;
-    color: #0f172a;
+    font-family: var(--font-serif, 'DM Serif Display', serif);
+    font-size: 1.2rem;
+    color: ${C.ink};
 `;
 
-const Field = styled.div`
-    display: grid;
-    gap: 0.4rem;
-`;
+const Field = styled.div`display: grid; gap: 0.4rem;`;
 
 const Label = styled.label`
     font-size: 0.8rem;
-    font-weight: 600;
-    color: #475569;
+    font-weight: 500;
+    color: ${C.inkSoft};
 `;
 
 const Input = styled.input`
-    border: 1px solid #e2e8f0;
+    border: 1px solid ${C.border};
     border-radius: 8px;
     padding: 8px 12px;
     font-size: 0.875rem;
+    font-family: var(--font-sans, sans-serif);
     width: 100%;
     box-sizing: border-box;
-    &:focus { outline: 2px solid #2563eb; outline-offset: 1px; }
+    background: ${C.paper};
+    color: ${C.ink};
+    outline: none;
+
+    &:focus {
+        border-color: ${C.accent};
+        box-shadow: 0 0 0 3px ${C.accentLight};
+        background: #fff;
+    }
 `;
 
 const ModalFooter = styled.div`
@@ -317,7 +382,7 @@ const STATUS_LABEL: Record<DeliveryStatus, string> = {
 };
 
 const STATUS_COLOR: Record<DeliveryStatus, { bg: string; color: string }> = {
-    PENDING:   { bg: "#f1f5f9", color: "#64748b" },
+    PENDING:   { bg: "#f1f5f0", color: C.inkMuted },
     SENT:      { bg: "#dbeafe", color: "#1d4ed8" },
     DELIVERED: { bg: "#dcfce7", color: "#16a34a" },
     OPENED:    { bg: "#d1fae5", color: "#059669" },
@@ -328,10 +393,10 @@ const STATUS_COLOR: Record<DeliveryStatus, { bg: string; color: string }> = {
 
 function DeliveryBadge({ info }: { info?: { status: string; sentAt: string | null; openedAt: string | null } }) {
     if (!info) {
-        return <span style={{ fontSize: "0.75rem", color: "#cbd5e1" }}>미발송</span>;
+        return <span style={{ fontSize: "0.75rem", color: C.inkMuted }}>미발송</span>;
     }
     const s = info.status as DeliveryStatus;
-    const { bg, color } = STATUS_COLOR[s] ?? { bg: "#f1f5f9", color: "#64748b" };
+    const { bg, color } = STATUS_COLOR[s] ?? { bg: "#f1f5f0", color: C.inkMuted };
     const label = STATUS_LABEL[s] ?? s;
     const tooltip = info.openedAt
         ? `열람: ${new Date(info.openedAt).toLocaleString("ko-KR")}`
@@ -359,43 +424,36 @@ function DeliveryBadge({ info }: { info?: { status: string; sentAt: string | nul
 }
 
 /* ────────── Checkbox styles ────────── */
-const CheckTh = styled.th`
-    width: 36px;
-    padding: 0 0 0 12px !important;
-`;
-
-const CheckTd = styled.td`
-    width: 36px;
-    padding: 0 0 0 12px !important;
-    cursor: default !important;
-`;
+const CheckTh = styled.th`width: 36px; padding: 0 0 0 12px !important;`;
+const CheckTd = styled.td`width: 36px; padding: 0 0 0 12px !important; cursor: default !important;`;
 
 const SelectBar = styled.div`
     display: flex;
     align-items: center;
     gap: 0.75rem;
     padding: 0.5rem 0.75rem;
-    background: #eff6ff;
+    background: ${C.accentLight};
     border-radius: 8px;
     font-size: 0.85rem;
-    color: #1d4ed8;
+    color: ${C.accent};
 `;
 
 /* ────────── Inline edit styles ────────── */
 const CellInput = styled.input`
     width: 100%;
-    border: 1px solid #6366f1;
+    border: 1px solid ${C.accent};
     border-radius: 4px;
     padding: 2px 6px;
     font-size: 0.875rem;
+    font-family: var(--font-sans, sans-serif);
     box-sizing: border-box;
     outline: none;
-    background: #f0f4ff;
+    background: ${C.accentLight};
 `;
 
 const EditHint = styled.span`
     font-size: 0.72rem;
-    color: #94a3b8;
+    color: ${C.inkMuted};
     margin-left: 0.5rem;
 `;
 
@@ -409,21 +467,16 @@ export default function EventDetailPage() {
     const [filter, setFilter] = useState("");
     const [deliveryMap, setDeliveryMap] = useState<Record<string, { status: string; sentAt: string | null; openedAt: string | null }>>({});
 
-    // Inline editing
     const [localRows, setLocalRows] = useState<Record<string, string>[]>([]);
     const [editingCell, setEditingCell] = useState<{ rowIndex: number; col: string } | null>(null);
     const [editValue, setEditValue] = useState("");
-
-    // 체크박스 선택
     const [checkedIndices, setCheckedIndices] = useState<Set<number>>(new Set());
 
-    // 이메일 템플릿 편집
     const [emailSubject, setEmailSubject] = useState("");
     const [emailContent, setEmailContent] = useState("");
     const [templateSaving, setTemplateSaving] = useState(false);
     const [templateSaved, setTemplateSaved] = useState(false);
 
-    // Campaign modal
     const [modalOpen, setModalOpen] = useState(false);
     const [campaignName, setCampaignName] = useState("");
     const [sending, setSending] = useState(false);
@@ -539,10 +592,7 @@ export default function EventDetailPage() {
 
     async function handleSendCampaign(e: React.FormEvent) {
         e.preventDefault();
-        if (!campaignName.trim()) {
-            setCampaignError("캠페인 이름을 입력하세요.");
-            return;
-        }
+        if (!campaignName.trim()) { setCampaignError("캠페인 이름을 입력하세요."); return; }
         setSending(true);
         setCampaignError(null);
 
@@ -591,8 +641,8 @@ export default function EventDetailPage() {
 
             {/* 행사 정보 */}
             <Card>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                    <Title>{event.title}</Title>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+                    <PageTitle>{event.title}</PageTitle>
                     <Badge status={event.status}>
                         {event.status === "ONGOING" ? "진행 중" : "종료"}
                     </Badge>
@@ -601,7 +651,7 @@ export default function EventDetailPage() {
                     <span>📅 {formatDate(event.date)}</span>
                     {event.place && <span>📍 {event.place}</span>}
                     {event.sheetUrl && (
-                        <a href={event.sheetUrl} target="_blank" rel="noreferrer" style={{ color: "#2563eb" }}>
+                        <a href={event.sheetUrl} target="_blank" rel="noreferrer">
                             Google Sheets 열기
                         </a>
                     )}
@@ -614,17 +664,12 @@ export default function EventDetailPage() {
                     <SectionTitle style={{ margin: 0 }}>
                         이메일 템플릿
                         {!hasTemplate && (
-                            <span style={{ marginLeft: "0.5rem", fontSize: "0.75rem", color: "#ef4444", fontWeight: 400 }}>
+                            <span style={{ marginLeft: "0.5rem", fontSize: "0.75rem", color: C.accent, fontWeight: 400 }}>
                                 (미설정 — 발송 전 반드시 설정하세요)
                             </span>
                         )}
                     </SectionTitle>
-                    <PrimaryBtn
-                        type="button"
-                        onClick={handleTemplateSave}
-                        disabled={templateSaving}
-                        style={{ padding: "6px 14px", fontSize: "0.8rem" }}
-                    >
+                    <PrimaryBtn type="button" onClick={handleTemplateSave} disabled={templateSaving} style={{ padding: "6px 14px", fontSize: "0.82rem" }}>
                         {templateSaving ? "저장 중..." : templateSaved ? "저장됨 ✓" : "저장"}
                     </PrimaryBtn>
                 </div>
@@ -647,8 +692,8 @@ export default function EventDetailPage() {
                     />
                 </TemplateField>
                 <PlaceholderHint>
-                    플레이스홀더: <code style={{ background: "#f1f5f9", padding: "1px 5px", borderRadius: 4 }}>{"{{컬럼명}}"}</code> 형식으로 참가자 데이터가 치환됩니다.
-                    기본 제공: <code style={{ background: "#f1f5f9", padding: "1px 5px", borderRadius: 4 }}>{"{{행사명}}"}</code>
+                    플레이스홀더: <code style={{ background: C.paper, padding: "1px 5px", borderRadius: 4, fontSize: "0.82em" }}>{"{{컬럼명}}"}</code> 형식으로 참가자 데이터가 치환됩니다.
+                    기본 제공: <code style={{ background: C.paper, padding: "1px 5px", borderRadius: 4, fontSize: "0.82em" }}>{"{{행사명}}"}</code>
                 </PlaceholderHint>
             </Card>
 
@@ -658,7 +703,7 @@ export default function EventDetailPage() {
                     <SectionTitle style={{ margin: 0 }}>
                         참가자 데이터 {rows.length > 0 && `(${rows.length}명)`}
                         {event.data && (
-                            <span style={{ fontWeight: 400, fontSize: "0.8rem", color: "#94a3b8", marginLeft: "0.5rem" }}>
+                            <span style={{ fontWeight: 400, fontSize: "0.78rem", color: C.inkMuted, marginLeft: "0.5rem", fontFamily: "var(--font-sans, sans-serif)" }}>
                                 v{event.data.version}
                             </span>
                         )}
@@ -693,7 +738,7 @@ export default function EventDetailPage() {
                     <>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
                             {filter ? (
-                                <p style={{ margin: 0, fontSize: "0.8rem", color: "#64748b" }}>
+                                <p style={{ margin: 0, fontSize: "0.8rem", color: C.inkMuted }}>
                                     {filteredIndexed.length}명 표시 중 (전체 {rows.length}명)
                                 </p>
                             ) : <span />}
@@ -703,14 +748,14 @@ export default function EventDetailPage() {
                                     <button
                                         type="button"
                                         onClick={() => setCheckedIndices(new Set())}
-                                        style={{ background: "none", border: "none", color: "#2563eb", cursor: "pointer", fontSize: "0.8rem", padding: 0, textDecoration: "underline" }}
+                                        style={{ background: "none", border: "none", color: C.accent, cursor: "pointer", fontSize: "0.8rem", padding: 0, textDecoration: "underline" }}
                                     >
                                         전체 해제
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => setCheckedIndices(new Set(rows.map((_, i) => i)))}
-                                        style={{ background: "none", border: "none", color: "#2563eb", cursor: "pointer", fontSize: "0.8rem", padding: 0, textDecoration: "underline" }}
+                                        style={{ background: "none", border: "none", color: C.accent, cursor: "pointer", fontSize: "0.8rem", padding: 0, textDecoration: "underline" }}
                                     >
                                         전체 선택
                                     </button>
@@ -737,7 +782,7 @@ export default function EventDetailPage() {
                                 </thead>
                                 <tbody>
                                     {filteredIndexed.map(({ row, origIdx }) => (
-                                        <tr key={origIdx} style={{ background: checkedIndices.has(origIdx) ? undefined : "#fafafa" }}>
+                                        <tr key={origIdx}>
                                             <CheckTd onClick={(e) => e.stopPropagation()}>
                                                 <input
                                                     type="checkbox"
@@ -790,17 +835,17 @@ export default function EventDetailPage() {
                 <Overlay onClick={(e) => e.target === e.currentTarget && setModalOpen(false)}>
                     <Modal>
                         <ModalTitle>이메일 캠페인 발송</ModalTitle>
-                        <p style={{ margin: 0, fontSize: "0.875rem", color: "#475569" }}>
+                        <p style={{ margin: 0, fontSize: "0.875rem", color: C.inkSoft }}>
                             <strong>{event.title}</strong> 행사의 선택된 참가자{" "}
-                            <strong style={{ color: "#2563eb" }}>{checkedIndices.size}명</strong>
+                            <strong style={{ color: C.accent }}>{checkedIndices.size}명</strong>
                             에게 이메일을 발송합니다.
                             {checkedIndices.size < rows.length && (
-                                <span style={{ color: "#94a3b8", marginLeft: "0.25rem" }}>
+                                <span style={{ color: C.inkMuted, marginLeft: "0.25rem" }}>
                                     (전체 {rows.length}명 중)
                                 </span>
                             )}
                         </p>
-                        <div style={{ background: "#f8fafc", borderRadius: 8, padding: "0.75rem 1rem", fontSize: "0.82rem", color: "#475569" }}>
+                        <div style={{ background: C.paper, border: `1px solid ${C.border}`, borderRadius: 8, padding: "0.75rem 1rem", fontSize: "0.82rem", color: C.inkSoft }}>
                             <strong>제목:</strong> {event.emailSubject}<br />
                             <strong>내용:</strong> {(event.emailContent ?? "").slice(0, 80)}{(event.emailContent ?? "").length > 80 ? "…" : ""}
                         </div>

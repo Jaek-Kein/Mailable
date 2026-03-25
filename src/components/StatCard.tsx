@@ -5,28 +5,33 @@ import styled from '@emotion/styled';
 const Card = styled.article`
   background: ${({ theme }) => theme.color.card};
   border: 1px solid ${({ theme }) => theme.color.border};
-  border-radius: ${({ theme }) => theme.radius.lg};
+  border-radius: ${({ theme }) => theme.radius.md};
   box-shadow: ${({ theme }) => theme.shadow.card};
-  padding: 1rem;
+  padding: 1.1rem 1.25rem;
 `;
 
-const Label = styled.h3`
-  font-size: 0.9rem;
-  color: ${({ theme }) => theme.color.sub};
+const Label = styled.p`
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  color: ${({ theme }) => theme.color.muted};
   margin: 0 0 0.5rem;
+  text-transform: uppercase;
 `;
 
 const Value = styled.div<{ tone?: 'success' | 'warning' | 'danger' }>`
-  font-size: 1.75rem; font-weight: 700; line-height: 1.2;
+  font-family: var(--font-serif, 'DM Serif Display', serif);
+  font-size: 2rem;
+  line-height: 1.1;
   color: ${({ theme, tone }) =>
     tone === 'success' ? theme.color.success :
     tone === 'warning' ? theme.color.warning :
-    tone === 'danger' ? theme.color.danger :
+    tone === 'danger'  ? theme.color.danger  :
     theme.color.text};
 `;
 
 export default function StatCard(
-  { label, value, tone }: { label: string; value: string | number; tone?: 'success'|'warning'|'danger' }
+  { label, value, tone }: { label: string; value: string | number; tone?: 'success' | 'warning' | 'danger' }
 ) {
   return (
     <Card role="region" aria-label={label}>

@@ -15,11 +15,9 @@ async function toWebP(file: File): Promise<Blob> {
             canvas.width = Math.round(img.width * scale);
             canvas.height = Math.round(img.height * scale);
             canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
-            // WebP 시도 후 결과가 없으면 PNG로 폴백
             canvas.toBlob(
                 (blob) => {
                     if (blob && blob.type === "image/webp") return resolve(blob);
-                    // WebP 미지원 브라우저 폴백: PNG
                     canvas.toBlob(
                         (pngBlob) => pngBlob ? resolve(pngBlob) : reject(new Error("이미지 변환 실패")),
                         "image/png"
@@ -41,8 +39,8 @@ interface Props {
 const Backdrop = styled.div`
     position: fixed;
     inset: 0;
-    background: rgba(15, 23, 42, 0.45);
-    backdrop-filter: blur(2px);
+    background: rgba(26, 26, 46, 0.5);
+    backdrop-filter: blur(3px);
     display: grid;
     place-items: center;
     z-index: 100;
@@ -51,8 +49,9 @@ const Backdrop = styled.div`
 
 const Dialog = styled.div`
     background: #fff;
-    border-radius: 14px;
-    box-shadow: 0 12px 40px rgba(2, 6, 23, 0.18);
+    border: 1px solid ${({ theme }) => theme.color.border};
+    border-radius: 16px;
+    box-shadow: 0 16px 48px rgba(26, 26, 46, 0.18);
     width: 100%;
     max-width: 480px;
     padding: 1.75rem;
@@ -68,8 +67,10 @@ const DialogHeader = styled.div`
 
 const DialogTitle = styled.h2`
     margin: 0;
-    font-size: 1.15rem;
-    color: #0f172a;
+    font-family: var(--font-serif, 'DM Serif Display', serif);
+    font-size: 1.25rem;
+    color: ${({ theme }) => theme.color.text};
+    letter-spacing: -0.2px;
 `;
 
 const CloseButton = styled.button`
@@ -77,12 +78,16 @@ const CloseButton = styled.button`
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 1.3rem;
-    color: #64748b;
+    font-size: 1.2rem;
+    color: ${({ theme }) => theme.color.muted};
     padding: 2px 6px;
     border-radius: 6px;
     line-height: 1;
-    &:hover { background: #f1f5f9; }
+
+    &:hover {
+        background: ${({ theme }) => theme.color.bg};
+        color: ${({ theme }) => theme.color.text};
+    }
 `;
 
 const Form = styled.form`
@@ -96,43 +101,51 @@ const Field = styled.div`
 `;
 
 const Label = styled.label`
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: #374151;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: ${({ theme }) => theme.color.sub};
 `;
 
 const Required = styled.span`
-    color: #ef4444;
+    color: ${({ theme }) => theme.color.accent};
     margin-left: 2px;
 `;
 
 const Input = styled.input`
     width: 100%;
     box-sizing: border-box;
-    padding: 0.55rem 0.75rem;
-    border: 1px solid #d1d5db;
+    padding: 0.55rem 0.8rem;
+    border: 1px solid ${({ theme }) => theme.color.border};
     border-radius: 8px;
-    font-size: 0.95rem;
-    color: #0f172a;
+    font-size: 0.9rem;
+    font-family: var(--font-sans, sans-serif);
+    color: ${({ theme }) => theme.color.text};
+    background: ${({ theme }) => theme.color.bg};
     outline: none;
-    transition: border-color 0.15s;
-    &:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
-    &::placeholder { color: #9ca3af; }
+    transition: border-color 0.15s, box-shadow 0.15s;
+
+    &:focus {
+        border-color: ${({ theme }) => theme.color.accent};
+        box-shadow: 0 0 0 3px ${({ theme }) => theme.color.accentLight};
+        background: #fff;
+    }
+
+    &::placeholder { color: ${({ theme }) => theme.color.muted}; }
 `;
 
 const Hint = styled.p`
     margin: 0;
     font-size: 0.78rem;
-    color: #6b7280;
+    color: ${({ theme }) => theme.color.muted};
 `;
 
 const ErrorText = styled.p`
     margin: 0;
     font-size: 0.83rem;
-    color: #ef4444;
+    color: ${({ theme }) => theme.color.danger};
     background: #fef2f2;
-    border: 1px solid #fecaca;
-    border-radius: 6px;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: 8px;
     padding: 0.5rem 0.75rem;
 `;
 
@@ -145,32 +158,33 @@ const Footer = styled.div`
 
 const CancelButton = styled.button`
     appearance: none;
-    background: #f1f5f9;
-    border: 1px solid #e2e8f0;
+    background: ${({ theme }) => theme.color.bg};
+    border: 1px solid ${({ theme }) => theme.color.border};
     border-radius: 8px;
     padding: 0.55rem 1.1rem;
-    font-size: 0.9rem;
-    color: #475569;
+    font-size: 0.875rem;
+    color: ${({ theme }) => theme.color.sub};
     cursor: pointer;
-    &:hover { background: #e2e8f0; }
+    &:hover { background: ${({ theme }) => theme.color.border}; }
 `;
 
 const SubmitButton = styled.button`
     appearance: none;
-    background: #2563eb;
+    background: ${({ theme }) => theme.color.primary};
     border: none;
     border-radius: 8px;
     padding: 0.55rem 1.3rem;
-    font-size: 0.9rem;
-    font-weight: 600;
+    font-size: 0.875rem;
+    font-weight: 500;
     color: #fff;
     cursor: pointer;
-    transition: background 0.15s;
-    &:hover { background: #1d4ed8; }
-    &:disabled { background: #93c5fd; cursor: not-allowed; }
+    transition: background 0.15s, transform 0.1s;
+
+    &:hover { background: #2d2d4a; transform: translateY(-1px); }
+    &:active { transform: translateY(0); }
+    &:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 `;
 
-// 포스터 업로드 관련
 const PosterUploadArea = styled.label<{ hasPreview: boolean }>`
     display: flex;
     flex-direction: column;
@@ -178,14 +192,18 @@ const PosterUploadArea = styled.label<{ hasPreview: boolean }>`
     justify-content: center;
     gap: 0.4rem;
     height: 140px;
-    border: 2px dashed ${({ hasPreview }) => (hasPreview ? "#2563eb" : "#d1d5db")};
+    border: 2px dashed ${({ theme, hasPreview }) => hasPreview ? theme.color.accent : theme.color.border};
     border-radius: 10px;
     cursor: pointer;
     overflow: hidden;
     position: relative;
-    background: ${({ hasPreview }) => (hasPreview ? "#eff6ff" : "#f9fafb")};
+    background: ${({ theme, hasPreview }) => hasPreview ? theme.color.accentLight : theme.color.bg};
     transition: border-color 0.15s, background 0.15s;
-    &:hover { border-color: #2563eb; background: #eff6ff; }
+
+    &:hover {
+        border-color: ${({ theme }) => theme.color.accent};
+        background: ${({ theme }) => theme.color.accentLight};
+    }
 `;
 
 const PosterPreview = styled.img`
@@ -202,25 +220,23 @@ const PosterPlaceholder = styled.div`
     flex-direction: column;
     align-items: center;
     gap: 0.3rem;
-    color: #9ca3af;
+    color: ${({ theme }) => theme.color.muted};
     font-size: 0.85rem;
     pointer-events: none;
 `;
 
-const HiddenFileInput = styled.input`
-    display: none;
-`;
+const HiddenFileInput = styled.input`display: none;`;
 
 const UploadingOverlay = styled.div`
     position: absolute;
     inset: 0;
-    background: rgba(255,255,255,0.75);
+    background: rgba(255, 255, 255, 0.8);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 0.82rem;
-    color: #2563eb;
-    font-weight: 600;
+    color: ${({ theme }) => theme.color.accent};
+    font-weight: 500;
 `;
 
 export default function AddEventModal({ onClose }: Props) {
@@ -233,31 +249,20 @@ export default function AddEventModal({ onClose }: Props) {
 
     useEffect(() => {
         firstInputRef.current?.focus();
-        const onKeyDown = (e: KeyboardEvent) => {
-            if (e.key === "Escape") onClose();
-        };
+        const onKeyDown = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
         window.addEventListener("keydown", onKeyDown);
         return () => window.removeEventListener("keydown", onKeyDown);
     }, [onClose]);
 
-    // 미리보기 URL 정리
     useEffect(() => {
-        return () => {
-            if (posterPreview) URL.revokeObjectURL(posterPreview);
-        };
+        return () => { if (posterPreview) URL.revokeObjectURL(posterPreview); };
     }, [posterPreview]);
 
     const handlePosterChange = (e: ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        if (!file.type.startsWith("image/")) {
-            setError("이미지 파일만 업로드할 수 있습니다.");
-            return;
-        }
-        if (file.size > 10 * 1024 * 1024) {
-            setError("포스터 파일은 최대 10MB까지 업로드 가능합니다.");
-            return;
-        }
+        if (!file.type.startsWith("image/")) { setError("이미지 파일만 업로드할 수 있습니다."); return; }
+        if (file.size > 10 * 1024 * 1024) { setError("포스터 파일은 최대 10MB까지 업로드 가능합니다."); return; }
         setError(null);
         setPosterFile(file);
         if (posterPreview) URL.revokeObjectURL(posterPreview);
@@ -278,7 +283,6 @@ export default function AddEventModal({ onClose }: Props) {
 
         const date = new Date(dateRaw).toISOString();
 
-        // 포스터 업로드 (클라이언트에서 WebP 변환 후 서버 API → Vercel Blob put)
         let posterUrl: string | undefined;
         if (posterFile) {
             setUploading(true);
@@ -323,12 +327,7 @@ export default function AddEventModal({ onClose }: Props) {
 
                     <Field>
                         <Label htmlFor="title">행사명<Required>*</Required></Label>
-                        <Input
-                            ref={firstInputRef}
-                            id="title"
-                            name="title"
-                            placeholder="예: 2025 개발자 컨퍼런스"
-                        />
+                        <Input ref={firstInputRef} id="title" name="title" placeholder="예: 2025 개발자 컨퍼런스" />
                     </Field>
 
                     <Field>
@@ -343,21 +342,14 @@ export default function AddEventModal({ onClose }: Props) {
 
                     <Field>
                         <Label htmlFor="sheetUrl">Google Sheets URL</Label>
-                        <Input
-                            id="sheetUrl"
-                            name="sheetUrl"
-                            type="url"
-                            placeholder="https://docs.google.com/spreadsheets/d/..."
-                        />
+                        <Input id="sheetUrl" name="sheetUrl" type="url" placeholder="https://docs.google.com/spreadsheets/d/..." />
                         <Hint>참가자 데이터를 불러올 스프레드시트 URL (선택)</Hint>
                     </Field>
 
                     <Field>
                         <Label>행사 포스터</Label>
                         <PosterUploadArea hasPreview={!!posterPreview} htmlFor="poster-file">
-                            {posterPreview && (
-                                <PosterPreview src={posterPreview} alt="포스터 미리보기" />
-                            )}
+                            {posterPreview && <PosterPreview src={posterPreview} alt="포스터 미리보기" />}
                             {!posterPreview && (
                                 <PosterPlaceholder>
                                     <span style={{ fontSize: "1.5rem" }}>🖼️</span>
@@ -367,12 +359,7 @@ export default function AddEventModal({ onClose }: Props) {
                             )}
                             {uploading && <UploadingOverlay>업로드 중…</UploadingOverlay>}
                         </PosterUploadArea>
-                        <HiddenFileInput
-                            id="poster-file"
-                            type="file"
-                            accept="image/*"
-                            onChange={handlePosterChange}
-                        />
+                        <HiddenFileInput id="poster-file" type="file" accept="image/*" onChange={handlePosterChange} />
                         {posterFile && (
                             <Hint>{posterFile.name} · {(posterFile.size / 1024).toFixed(0)}KB → WebP로 변환 후 업로드됩니다</Hint>
                         )}

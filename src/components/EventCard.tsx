@@ -25,8 +25,8 @@ export interface EventCardProps {
 const Card = styled.article`
     background: ${({ theme }) => theme.color.card};
     border: 1px solid ${({ theme }) => theme.color.border};
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(2, 6, 23, 0.06);
+    border-radius: ${({ theme }) => theme.radius.md};
+    box-shadow: ${({ theme }) => theme.shadow.card};
     overflow: hidden;
     transition: transform 0.12s ease, box-shadow 0.12s ease;
     cursor: pointer;
@@ -34,61 +34,61 @@ const Card = styled.article`
 
     &:hover {
         transform: translateY(-2px);
-        box-shadow: 0 6px 18px rgba(2, 6, 23, 0.1);
+        box-shadow: 0 8px 24px rgba(26, 26, 46, 0.12);
     }
+
     &:focus-visible {
-        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);
+        box-shadow: 0 0 0 3px rgba(232, 83, 58, 0.3);
     }
 `;
+
 const Poster = styled.div<{ src?: string | null }>`
     height: 160px;
     background: ${({ src }) =>
-        src ? `center/cover no-repeat url("${src}")` : "#e5e7eb"};
+        src ? `center/cover no-repeat url("${src}")` : "#f0ede8"};
     display: grid;
     place-items: center;
-    color: #ffffffcc;
-    font-weight: 600;
-    letter-spacing: 0.2px;
+    color: #b0a898;
+    font-size: 0.8rem;
+    letter-spacing: 0.5px;
 `;
 
 const Body = styled.div`
     padding: 14px 16px 16px;
     display: grid;
-    gap: 8px;
+    gap: 6px;
 `;
 
 const Title = styled.h3`
     margin: 0;
+    font-family: var(--font-serif, 'DM Serif Display', serif);
     font-size: 1.05rem;
     line-height: 1.3;
     color: ${({ theme }) => theme.color.text};
 `;
 
 const Meta = styled.div`
-    font-size: 0.86rem;
-    color: ${({ theme }) => theme.color.sub};
-    line-height: 1.35;
+    font-size: 0.84rem;
+    color: ${({ theme }) => theme.color.muted};
+    line-height: 1.4;
 `;
 
 const Row = styled.div`
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.4rem;
 `;
 
 const Dot = styled.span<{ tone?: "danger" | "success" | "warning" | "info" }>`
     display: inline-block;
-    width: 0.5rem;
-    height: 0.5rem;
+    width: 0.45rem;
+    height: 0.45rem;
     border-radius: 999px;
     background: ${({ theme, tone }) =>
-        tone === "danger"
-            ? theme.color.danger
-            : tone === "success"
-            ? theme.color.success
-            : tone === "warning"
-            ? theme.color.warning
-            : theme.color.primary};
+        tone === "danger"   ? theme.color.danger  :
+        tone === "success"  ? theme.color.success :
+        tone === "warning"  ? theme.color.warning :
+        theme.color.accent};
 `;
 
 const Toolbar = styled.div`
@@ -98,15 +98,17 @@ const Toolbar = styled.div`
     z-index: 1;
     display: flex;
     gap: 6px;
+
     button {
         appearance: none;
-        border: 1px solid rgba(15, 23, 42, 0.08);
-        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid rgba(26, 26, 46, 0.1);
+        background: rgba(255, 255, 255, 0.92);
         backdrop-filter: blur(6px);
-        border-radius: 10px;
-        padding: 6px 8px;
-        font-size: 0.8rem;
+        border-radius: 8px;
+        padding: 5px 9px;
+        font-size: 0.78rem;
         cursor: pointer;
+        transition: background 0.15s;
     }
 `;
 
@@ -116,24 +118,25 @@ const Wrap = styled.div`
 
 const DeleteBtn = styled.button`
     appearance: none;
-    border: 1px solid rgba(239, 68, 68, 0.3) !important;
-    background: rgba(255, 255, 255, 0.9) !important;
+    border: 1px solid rgba(239, 68, 68, 0.25) !important;
+    background: rgba(255, 255, 255, 0.92) !important;
     backdrop-filter: blur(6px);
-    border-radius: 10px;
-    padding: 6px 8px;
-    font-size: 0.8rem;
+    border-radius: 8px;
+    padding: 5px 9px;
+    font-size: 0.78rem;
     cursor: pointer;
-    color: #ef4444;
+    color: ${({ theme }) => theme.color.danger};
+
     &:hover {
         background: #fef2f2 !important;
-        border-color: #ef4444 !important;
+        border-color: ${({ theme }) => theme.color.danger} !important;
     }
 `;
 
 const Overlay = styled.div`
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.45);
+    background: rgba(26, 26, 46, 0.45);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -142,26 +145,28 @@ const Overlay = styled.div`
 
 const Dialog = styled.div`
     background: #fff;
-    border-radius: 12px;
-    padding: 1.5rem 2rem;
+    border: 1px solid ${({ theme }) => theme.color.border};
+    border-radius: ${({ theme }) => theme.radius.md};
+    padding: 1.5rem 1.75rem;
     max-width: 360px;
     width: 90%;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+    box-shadow: 0 12px 40px rgba(26, 26, 46, 0.16);
     display: grid;
     gap: 1rem;
 `;
 
 const DialogTitle = styled.h3`
     margin: 0;
-    font-size: 1rem;
-    color: #0f172a;
+    font-family: var(--font-serif, 'DM Serif Display', serif);
+    font-size: 1.1rem;
+    color: ${({ theme }) => theme.color.text};
 `;
 
 const DialogBody = styled.p`
     margin: 0;
-    font-size: 0.9rem;
-    color: #475569;
-    line-height: 1.5;
+    font-size: 0.875rem;
+    color: ${({ theme }) => theme.color.sub};
+    line-height: 1.55;
 `;
 
 const DialogActions = styled.div`
@@ -172,20 +177,20 @@ const DialogActions = styled.div`
 
 const CancelButton = styled.button`
     appearance: none;
-    border: 1px solid #e2e8f0;
-    background: #f8fafc;
+    border: 1px solid ${({ theme }) => theme.color.border};
+    background: ${({ theme }) => theme.color.bg};
     border-radius: 8px;
     padding: 0.45rem 1rem;
     font-size: 0.875rem;
     cursor: pointer;
-    color: #475569;
-    &:hover { background: #f1f5f9; }
+    color: ${({ theme }) => theme.color.sub};
+    &:hover { background: ${({ theme }) => theme.color.border}; }
 `;
 
 const ConfirmDeleteButton = styled.button`
     appearance: none;
     border: none;
-    background: #ef4444;
+    background: ${({ theme }) => theme.color.danger};
     border-radius: 8px;
     padding: 0.45rem 1rem;
     font-size: 0.875rem;
@@ -197,43 +202,23 @@ const ConfirmDeleteButton = styled.button`
 
 function formatDate(value: string | Date) {
     const d = typeof value === "string" ? new Date(value) : value;
-    // 2024. 11. 03 형식
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, "0");
     const day = String(d.getDate()).padStart(2, "0");
     return `${y}. ${m}. ${day}`;
 }
 
-function toneByStatus(
-    status?: EventStatus
-): "success" | "warning" | "danger" | "info" {
+function toneByStatus(status?: EventStatus): "success" | "warning" | "danger" | "info" {
     switch (status) {
-        case "scheduled":
-            return "info";
-        case "closed":
-            return "warning";
-        default:
-            return "info";
+        case "scheduled": return "info";
+        case "closed":    return "warning";
+        default:          return "info";
     }
 }
 
-/**
- * EventCard
- * - 포스터(없으면 placeholder), 제목, 날짜, 장소
- * - 카드 전체 클릭 / 더보기 버튼 옵셔널
- */
 export default function EventCard({
-    id,
-    title,
-    date,
-    place,
-    posterUrl,
-    status,
-    onMoreClick,
-    onDelete,
-    className,
-    style,
-    sheetUrl,
+    id, title, date, place, posterUrl, status,
+    onMoreClick, onDelete, className, style, sheetUrl,
 }: EventCardProps) {
     const { ingestFromSheetUrl, loading } = useSheetStore();
     const router = useRouter();
@@ -272,12 +257,8 @@ export default function EventCard({
                             삭제하면 참가자 데이터와 캠페인 기록이 모두 사라집니다.
                         </DialogBody>
                         <DialogActions>
-                            <CancelButton type="button" onClick={handleCancelDelete}>
-                                취소
-                            </CancelButton>
-                            <ConfirmDeleteButton type="button" onClick={handleConfirmDelete}>
-                                삭제
-                            </ConfirmDeleteButton>
+                            <CancelButton type="button" onClick={handleCancelDelete}>취소</CancelButton>
+                            <ConfirmDeleteButton type="button" onClick={handleConfirmDelete}>삭제</ConfirmDeleteButton>
                         </DialogActions>
                     </Dialog>
                 </Overlay>
@@ -286,22 +267,12 @@ export default function EventCard({
             <Wrap className={className} style={style}>
                 <Toolbar>
                     {onDelete && (
-                        <DeleteBtn
-                            type="button"
-                            onClick={handleDeleteClick}
-                            aria-label="행사 삭제"
-                        >
+                        <DeleteBtn type="button" onClick={handleDeleteClick} aria-label="행사 삭제">
                             삭제
                         </DeleteBtn>
                     )}
                     {onMoreClick && (
-                        <button
-                            type="button"
-                            onClick={onMoreClick}
-                            aria-label="더보기"
-                        >
-                            ⋯
-                        </button>
+                        <button type="button" onClick={onMoreClick} aria-label="더보기">⋯</button>
                     )}
                 </Toolbar>
 
@@ -312,7 +283,7 @@ export default function EventCard({
                     onClick={onClick}
                 >
                     <Poster src={posterUrl}>
-                        {!posterUrl && <span>Poster Area</span>}
+                        {!posterUrl && <span>No Poster</span>}
                     </Poster>
 
                     <Body>
@@ -322,7 +293,7 @@ export default function EventCard({
                                 <Dot tone={toneByStatus(status)} />
                                 <span>{formatDate(date)}</span>
                             </Row>
-                            {place && <div>{place}</div>}
+                            {place && <div style={{ marginTop: '2px' }}>{place}</div>}
                         </Meta>
                     </Body>
                 </Card>

@@ -29,42 +29,60 @@ interface Campaign {
     _count: { deliveries: number };
 }
 
+/* ────────── Palette ────────── */
+const C = {
+    ink: "#1a1a2e",
+    inkSoft: "#3d3d5c",
+    inkMuted: "#8888a8",
+    paper: "#faf9f7",
+    accent: "#e8533a",
+    accentLight: "#fdf1ee",
+    border: "#e2dfd8",
+    card: "#ffffff",
+} as const;
+
 /* ────────── Styles ────────── */
 const Page = styled.main`
     max-width: 960px;
     margin: 2rem auto;
-    padding: 0 1rem;
+    padding: 0 1.25rem;
     display: grid;
     gap: 1.5rem;
 `;
 
 const BackBtn = styled.button`
+    appearance: none;
     background: none;
     border: none;
     cursor: pointer;
-    color: #64748b;
-    font-size: 0.9rem;
+    color: ${C.inkMuted};
+    font-size: 0.875rem;
     padding: 0;
-    &:hover { color: #0f172a; }
+    width: fit-content;
+    transition: color 0.15s;
+    &:hover { color: ${C.ink}; }
 `;
 
 const Card = styled.div`
-    background: #fff;
-    border: 1px solid #e2e8f0;
+    background: ${C.card};
+    border: 1px solid ${C.border};
     border-radius: 12px;
     padding: 1.5rem;
+    box-shadow: 0 4px 16px rgba(26, 26, 46, 0.06);
 `;
 
-const Title = styled.h1`
-    margin: 0 0 0.25rem;
-    font-size: 1.35rem;
-    color: #0f172a;
+const PageTitle = styled.h1`
+    margin: 0 0 0.2rem;
+    font-family: var(--font-serif, 'DM Serif Display', serif);
+    font-size: 1.5rem;
+    color: ${C.ink};
+    letter-spacing: -0.3px;
 `;
 
 const Sub = styled.p`
     margin: 0;
     font-size: 0.875rem;
-    color: #64748b;
+    color: ${C.inkMuted};
 `;
 
 const StatsGrid = styled.div`
@@ -75,22 +93,25 @@ const StatsGrid = styled.div`
 `;
 
 const StatBox = styled.div`
-    background: #f8fafc;
+    background: ${C.paper};
+    border: 1px solid ${C.border};
     border-radius: 10px;
     padding: 1rem 1.25rem;
 `;
 
 const StatVal = styled.div`
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #0f172a;
+    font-family: var(--font-serif, 'DM Serif Display', serif);
+    font-size: 1.75rem;
+    color: ${C.ink};
     line-height: 1;
 `;
 
 const StatLabel = styled.div`
     font-size: 0.75rem;
-    color: #94a3b8;
+    color: ${C.inkMuted};
     margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
 `;
 
 type StatusBadgeProps = { s: DeliveryStatus | CampaignStatus };
@@ -102,17 +123,17 @@ const StatusBadge = styled.span<StatusBadgeProps>`
     font-weight: 600;
     white-space: nowrap;
     background: ${({ s }) => ({
-        PENDING: "#f1f5f9", SENT: "#dbeafe", DELIVERED: "#dcfce7",
+        PENDING: "#f1f5f0", SENT: "#dbeafe", DELIVERED: "#dcfce7",
         OPENED: "#d1fae5", CLICKED: "#a7f3d0", BOUNCED: "#fef3c7",
-        FAILED: "#fee2e2", DRAFT: "#f1f5f9", SCHEDULED: "#dbeafe",
+        FAILED: "#fee2e2", DRAFT: "#f1f5f0", SCHEDULED: "#dbeafe",
         SENDING: "#fef9c3", COMPLETED: "#dcfce7",
-    }[s] ?? "#f1f5f9")};
+    }[s] ?? "#f1f5f0")};
     color: ${({ s }) => ({
-        PENDING: "#64748b", SENT: "#1d4ed8", DELIVERED: "#16a34a",
+        PENDING: C.inkMuted, SENT: "#1d4ed8", DELIVERED: "#16a34a",
         OPENED: "#059669", CLICKED: "#047857", BOUNCED: "#b45309",
-        FAILED: "#dc2626", DRAFT: "#475569", SCHEDULED: "#1d4ed8",
+        FAILED: "#dc2626", DRAFT: C.inkMuted, SCHEDULED: "#1d4ed8",
         SENDING: "#a16207", COMPLETED: "#16a34a",
-    }[s] ?? "#64748b")};
+    }[s] ?? C.inkMuted)};
 `;
 
 const DELIVERY_LABEL: Record<DeliveryStatus, string> = {
@@ -127,32 +148,49 @@ const CAMPAIGN_LABEL: Record<CampaignStatus, string> = {
 
 const SectionTitle = styled.h2`
     margin: 0 0 1rem;
-    font-size: 1rem;
-    color: #334155;
+    font-family: var(--font-serif, 'DM Serif Display', serif);
+    font-size: 1.05rem;
+    color: ${C.ink};
 `;
 
 const Table = styled.table`
     width: 100%;
     border-collapse: collapse;
     font-size: 0.85rem;
+
     th, td {
         padding: 0.6rem 0.75rem;
         text-align: left;
-        border-bottom: 1px solid #f1f5f9;
+        border-bottom: 1px solid ${C.border};
     }
-    th { color: #94a3b8; font-weight: 600; background: #f8fafc; }
+    th {
+        color: ${C.inkMuted};
+        font-weight: 500;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        background: ${C.paper};
+    }
     tr:last-child td { border-bottom: none; }
-    tr:hover td { background: #f8fafc; }
+    tr:hover td { background: ${C.paper}; }
 `;
 
 const FilterInput = styled.input`
     padding: 0.4rem 0.75rem;
-    border: 1px solid #e2e8f0;
+    border: 1px solid ${C.border};
     border-radius: 8px;
     font-size: 0.85rem;
+    font-family: var(--font-sans, sans-serif);
+    background: ${C.paper};
+    color: ${C.ink};
     outline: none;
     width: 200px;
-    &:focus { border-color: #6366f1; }
+
+    &:focus {
+        border-color: ${C.accent};
+        box-shadow: 0 0 0 3px ${C.accentLight};
+        background: #fff;
+    }
 `;
 
 const Toolbar = styled.div`
@@ -165,30 +203,33 @@ const Toolbar = styled.div`
 const Empty = styled.div`
     text-align: center;
     padding: 2rem;
-    color: #94a3b8;
+    color: ${C.inkMuted};
     font-size: 0.875rem;
 `;
 
 const ErrorMsg = styled.div`
-    color: #ef4444;
+    color: #dc2626;
     background: #fef2f2;
+    border: 1px solid rgba(220, 38, 38, 0.2);
     border-radius: 8px;
     padding: 0.75rem 1rem;
     font-size: 0.875rem;
 `;
 
 const ProgressBar = styled.div<{ pct: number; color?: string }>`
-    height: 6px;
+    height: 5px;
     border-radius: 999px;
-    background: #e2e8f0;
+    background: ${C.border};
     position: relative;
+    margin-top: 0.5rem;
+
     &::after {
         content: "";
         position: absolute;
         left: 0; top: 0; bottom: 0;
         width: ${({ pct }) => Math.min(pct, 100)}%;
         border-radius: 999px;
-        background: ${({ color }) => color ?? "#6366f1"};
+        background: ${({ color }) => color ?? C.accent};
         transition: width 0.3s;
     }
 `;
@@ -252,10 +293,10 @@ export default function CampaignDetailPage() {
             <Card>
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem" }}>
                     <div>
-                        <Title>{campaign.name}</Title>
+                        <PageTitle>{campaign.name}</PageTitle>
                         <Sub style={{ marginTop: "0.3rem" }}>{campaign.event.title}</Sub>
                         {campaign.scheduledAt && (
-                            <Sub style={{ color: "#1d4ed8", marginTop: "0.25rem" }}>
+                            <Sub style={{ color: C.accent, marginTop: "0.25rem" }}>
                                 예약 일시: {fmt(campaign.scheduledAt)}
                             </Sub>
                         )}
@@ -277,12 +318,12 @@ export default function CampaignDetailPage() {
                     <StatBox>
                         <StatVal>{sentCount}</StatVal>
                         <StatLabel>발송 성공 ({sentPct}%)</StatLabel>
-                        <ProgressBar pct={sentPct} color="#6366f1" style={{ marginTop: "0.5rem" }} />
+                        <ProgressBar pct={sentPct} color={C.accent} />
                     </StatBox>
                     <StatBox>
                         <StatVal>{openedCount}</StatVal>
                         <StatLabel>열람 ({openPct}%)</StatLabel>
-                        <ProgressBar pct={openPct} color="#10b981" style={{ marginTop: "0.5rem" }} />
+                        <ProgressBar pct={openPct} color="#16a34a" />
                     </StatBox>
                     <StatBox>
                         <StatVal>{failedCount}</StatVal>
@@ -326,13 +367,11 @@ export default function CampaignDetailPage() {
                                         <td>{d.recipientName ?? "—"}</td>
                                         <td>{d.recipientEmail}</td>
                                         <td>
-                                            <StatusBadge s={d.status}>
-                                                {DELIVERY_LABEL[d.status]}
-                                            </StatusBadge>
+                                            <StatusBadge s={d.status}>{DELIVERY_LABEL[d.status]}</StatusBadge>
                                         </td>
-                                        <td>{fmt(d.sentAt)}</td>
-                                        <td>{fmt(d.openedAt)}</td>
-                                        <td style={{ color: "#ef4444", fontSize: "0.78rem" }}>
+                                        <td style={{ color: C.inkMuted }}>{fmt(d.sentAt)}</td>
+                                        <td style={{ color: C.inkMuted }}>{fmt(d.openedAt)}</td>
+                                        <td style={{ color: "#dc2626", fontSize: "0.78rem" }}>
                                             {d.errorMessage ?? "—"}
                                         </td>
                                     </tr>
