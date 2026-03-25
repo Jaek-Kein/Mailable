@@ -4,6 +4,7 @@ import { parseSheetUrl } from "@/src/lib/gsheets/parseUrl";
 import { fetchCsv } from "@/src/lib/gsheets/fetchCsv";
 import { csvToJson } from "@/src/lib/gsheets/csvToJson";
 import { prisma } from "@/src/lib/prisma";
+import { encryptJson } from "@/src/lib/crypto";
 
 const schema = z.object({
     eventId: z.string().min(1),
@@ -49,16 +50,16 @@ export async function POST(req: NextRequest) {
             )
         );
 
-        const payload = { rows };
+        const encryptedPayload = encryptJson({ rows });
 
         const saved = await prisma.eventData.upsert({
             where: { eventId },
             update: {
-                payload,
+                payload: encryptedPayload,
                 version: { increment: 1 },
                 updatedAt: new Date(),
             },
-            create: { eventId, payload },
+            create: { eventId, payload: encryptedPayload },
             select: { eventId: true, version: true },
         });
 

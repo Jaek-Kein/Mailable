@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
+import { encryptJson, decryptJson } from "@/src/lib/crypto";
 
 const bodySchema = z.object({
   email: z.string().email(),
@@ -44,7 +45,7 @@ export async function POST(
   const eventData = await prisma.eventData.findUnique({ where: { eventId: id } });
   if (!eventData) return NextResponse.json({ ok: false, error: "데이터 없음" }, { status: 404 });
 
-  const payload = eventData.payload as { rows: Record<string, string>[]; checkinMap?: Record<string, string | null> };
+  const payload = decryptJson<{ rows: Record<string, string>[]; checkinMap?: Record<string, string | null> }>(eventData.payload);
   const checkinMap: Record<string, string | null> = payload.checkinMap ?? {};
 
   if (checkedIn) {
@@ -55,7 +56,7 @@ export async function POST(
 
   await prisma.eventData.update({
     where: { eventId: id },
-    data: { payload: { ...payload, checkinMap } },
+    data: { payload: encryptJson({ ...payload, checkinMap }) },
   });
 
   return NextResponse.json({ ok: true, email, checkedIn, checkedInAt: checkinMap[email] });
@@ -81,10 +82,10 @@ export async function DELETE(
   const eventData = await prisma.eventData.findUnique({ where: { eventId: id } });
   if (!eventData) return NextResponse.json({ ok: false, error: "데이터 없음" }, { status: 404 });
 
-  const payload = eventData.payload as { rows: Record<string, string>[]; checkinMap?: Record<string, string | null> };
+  const payload = decryptJson<{ rows: Record<string, string>[]; checkinMap?: Record<string, string | null> }>(eventData.payload);
   await prisma.eventData.update({
     where: { eventId: id },
-    data: { payload: { ...payload, checkinMap: {} } },
+    data: { payload: encryptJson({ ...payload, checkinMap: {} }) },
   });
 
   return NextResponse.json({ ok: true });

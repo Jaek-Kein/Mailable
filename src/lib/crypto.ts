@@ -21,6 +21,22 @@ function getKey(): Buffer {
 }
 
 /**
+ * JSON 직렬화 가능한 값을 암호화합니다.
+ * JSON.stringify → encrypt 순서로 처리합니다.
+ */
+export function encryptJson(value: unknown): string {
+  return encrypt(JSON.stringify(value));
+}
+
+/**
+ * `encryptJson`으로 암호화된 값을 복호화하여 원래 객체로 반환합니다.
+ * 암호화되지 않은 레거시 JSON 문자열도 처리합니다.
+ */
+export function decryptJson<T>(value: string): T {
+  return JSON.parse(decrypt(value)) as T;
+}
+
+/**
  * 평문을 AES-256-GCM으로 암호화합니다.
  * 반환 형식: `hex(iv):hex(authTag):hex(ciphertext)`
  */

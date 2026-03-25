@@ -99,7 +99,7 @@ model EmailDelivery {
 model EventData {
   eventId   String   @id
   event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  payload   Json
+  payload   String   @db.Text
   version   Int      @default(1)
   updatedAt DateTime @default(now())
 }

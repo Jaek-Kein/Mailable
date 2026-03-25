@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
+import { encryptJson, decryptJson } from "@/src/lib/crypto";
 
 const patchSchema = z.object({
   rowIndex: z.number().int().min(0),
@@ -44,7 +45,7 @@ export async function PATCH(
   const eventData = await prisma.eventData.findUnique({ where: { eventId: id } });
   if (!eventData) return NextResponse.json({ ok: false, error: "데이터 없음" }, { status: 404 });
 
-  const payload = eventData.payload as { rows: Record<string, string>[] };
+  const payload = decryptJson<{ rows: Record<string, string>[] }>(eventData.payload);
   const rows: Record<string, string>[] = Array.isArray(payload?.rows) ? payload.rows : [];
 
   if (rowIndex >= rows.length) {
@@ -61,7 +62,7 @@ export async function PATCH(
 
   const updated = await prisma.eventData.update({
     where: { eventId: id },
-    data: { payload: { rows: updatedRows }, updatedAt: new Date() },
+    data: { payload: encryptJson({ rows: updatedRows }), updatedAt: new Date() },
   });
 
   return NextResponse.json({ ok: true, row: updatedRow, version: updated.version });

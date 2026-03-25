@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
+import { decryptJson } from "@/src/lib/crypto";
 
 const patchSchema = z.object({
   emailSubject: z.string().optional(),
@@ -76,7 +77,11 @@ export async function GET(
       }
     }
 
-    return NextResponse.json({ ok: true, event, deliveryMap });
+    const eventForResponse = {
+      ...event,
+      data: event.data ? { ...event.data, payload: decryptJson(event.data.payload) } : null,
+    };
+    return NextResponse.json({ ok: true, event: eventForResponse, deliveryMap });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import { sendGmail, renderTemplate } from "@/src/lib/gmail";
+import { decryptJson } from "@/src/lib/crypto";
 import { DeliveryStatus } from "@prisma/client";
 
 function findEmailKey(row: Record<string, string>): string | null {
@@ -43,8 +44,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const body = await req.json().catch(() => ({}));
   const rowIndices: number[] | undefined = Array.isArray(body.rowIndices) ? body.rowIndices : undefined;
 
-  const allRows: Record<string, string>[] =
-    (event.data?.payload as { rows?: Record<string, string>[] } | null)?.rows ?? [];
+  const allRows: Record<string, string>[] = event.data?.payload
+    ? decryptJson<{ rows: Record<string, string>[] }>(event.data.payload).rows ?? []
+    : [];
 
   const rows = rowIndices ? allRows.filter((_, i) => rowIndices.includes(i)) : allRows;
 
