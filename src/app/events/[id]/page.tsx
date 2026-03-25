@@ -4,7 +4,6 @@ import styled from "@emotion/styled";
 import { useEffect, useState, useMemo, useCallback, memo, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useParams, useRouter } from "next/navigation";
-import { useCampaignStore } from "@/src/store/useCampaignStore";
 
 interface EventData {
     payload: { rows: Record<string, string>[] };
@@ -295,32 +294,6 @@ const ModalTitle = styled.h2`
     color: ${C.ink};
 `;
 
-const Field = styled.div`display: grid; gap: 0.4rem;`;
-
-const Label = styled.label`
-    font-size: 0.8rem;
-    font-weight: 500;
-    color: ${C.inkSoft};
-`;
-
-const Input = styled.input`
-    border: 1px solid ${C.border};
-    border-radius: 8px;
-    padding: 8px 12px;
-    font-size: 0.875rem;
-    font-family: var(--font-sans, sans-serif);
-    width: 100%;
-    box-sizing: border-box;
-    background: ${C.paper};
-    color: ${C.ink};
-    outline: none;
-
-    &:focus {
-        border-color: ${C.accent};
-        box-shadow: 0 0 0 3px ${C.accentLight};
-        background: #fff;
-    }
-`;
 
 const ModalFooter = styled.div`
     display: flex;
@@ -531,29 +504,27 @@ const TemplateEditor = memo(function TemplateEditor({ eventId, initialSubject, i
     );
 });
 
-/* ────────── CampaignModal ────────── */
-interface CampaignModalProps {
+/* ────────── SendConfirmModal ────────── */
+interface SendConfirmModalProps {
     eventTitle: string;
     emailSubject: string | null;
     emailContent: string | null;
     checkedCount: number;
     totalRows: number;
     onClose: () => void;
-    onSend: (name: string) => Promise<void>;
+    onSend: () => Promise<void>;
 }
 
-const CampaignModal = memo(function CampaignModal({ eventTitle, emailSubject, emailContent, checkedCount, totalRows, onClose, onSend }: CampaignModalProps) {
-    const [campaignName, setCampaignName] = useState("");
+const SendConfirmModal = memo(function SendConfirmModal({ eventTitle, emailSubject, emailContent, checkedCount, totalRows, onClose, onSend }: SendConfirmModalProps) {
     const [sending, setSending] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    async function handleSubmit(e: React.FormEvent) {
+    async function handleSubmit(e: { preventDefault(): void }) {
         e.preventDefault();
-        if (!campaignName.trim()) { setError("캠페인 이름을 입력하세요."); return; }
         setSending(true);
         setError(null);
         try {
-            await onSend(campaignName);
+            await onSend();
         } catch (err) {
             setError(err instanceof Error ? err.message : "이메일 발송에 실패했습니다.");
         } finally {
@@ -564,7 +535,7 @@ const CampaignModal = memo(function CampaignModal({ eventTitle, emailSubject, em
     return (
         <Overlay onClick={(e) => e.target === e.currentTarget && onClose()}>
             <Modal>
-                <ModalTitle>이메일 캠페인 발송</ModalTitle>
+                <ModalTitle>이메일 발송</ModalTitle>
                 <p style={{ margin: 0, fontSize: "0.875rem", color: C.inkSoft }}>
                     <strong>{eventTitle}</strong> 행사의 선택된 참가자{" "}
                     <strong style={{ color: C.accent }}>{checkedCount}명</strong>
@@ -580,15 +551,6 @@ const CampaignModal = memo(function CampaignModal({ eventTitle, emailSubject, em
                     <strong>내용:</strong> {(emailContent ?? "").slice(0, 80)}{(emailContent ?? "").length > 80 ? "…" : ""}
                 </div>
                 <form onSubmit={handleSubmit} style={{ display: "grid", gap: "1rem" }}>
-                    <Field>
-                        <Label htmlFor="campaign-name">캠페인 이름 *</Label>
-                        <Input
-                            id="campaign-name"
-                            value={campaignName}
-                            onChange={(e) => setCampaignName(e.target.value)}
-                            placeholder="예) 1차 안내 발송"
-                        />
-                    </Field>
                     {error && <ErrorMessage>{error}</ErrorMessage>}
                     <ModalFooter>
                         <GhostBtn type="button" onClick={onClose}>취소</GhostBtn>
@@ -620,8 +582,6 @@ export default function EventDetailPage() {
     const [modalOpen, setModalOpen] = useState(false);
     const [sendResult, setSendResult] = useState<{ sentCount: number; failCount: number; total: number; errors: { email: string; reason: string }[] } | null>(null);
 
-    const createCampaign = useCampaignStore((s) => s.createCampaign);
-    const sendCampaign = useCampaignStore((s) => s.sendCampaign);
 
     useEffect(() => {
         fetch(`/api/events/${id}`)
@@ -673,17 +633,19 @@ export default function EventDetailPage() {
         overscan: 5,
     });
 
-    const handleSend = useCallback(async (campaignName: string) => {
-        const campaign = await createCampaign({ name: campaignName, eventId: id });
-        if (!campaign) throw new Error(useCampaignStore.getState().error ?? "캠페인 생성에 실패했습니다.");
+    const handleSend = useCallback(async () => {
+        const res = await fetch(`/api/events/${id}/send`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ rowIndices: Array.from(checkedIndices) }),
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error ?? "이메일 발송에 실패했습니다.");
 
-        const result = await sendCampaign(campaign.id, Array.from(checkedIndices));
-        if (!result) throw new Error(useCampaignStore.getState().error ?? "이메일 발송에 실패했습니다.");
-
-        setSendResult(result);
+        setSendResult(data);
         setModalOpen(false);
         if (emailColKey) {
-            const failedEmails = new Set(result.errors.map((e) => e.email));
+            const failedEmails = new Set((data.errors as { email: string; reason: string }[]).map((e) => e.email));
             const sentAt = new Date().toISOString();
             setDeliveryMap((prev) => {
                 const next = { ...prev };
@@ -697,7 +659,7 @@ export default function EventDetailPage() {
                 return next;
             });
         }
-    }, [createCampaign, sendCampaign, checkedIndices, emailColKey, localRows, id]);
+    }, [checkedIndices, emailColKey, localRows, id]);
 
     if (loading) return <Page><Empty>불러오는 중...</Empty></Page>;
     if (error || !event) return <Page><ErrorMessage>{error ?? "행사를 찾을 수 없습니다."}</ErrorMessage></Page>;
@@ -948,7 +910,7 @@ export default function EventDetailPage() {
 
             {/* 이메일 발송 모달 */}
             {modalOpen && (
-                <CampaignModal
+                <SendConfirmModal
                     eventTitle={event.title}
                     emailSubject={event.emailSubject}
                     emailContent={event.emailContent}
