@@ -46,13 +46,17 @@ const floatEnv3 = keyframes`
 
 // ── Styled Components ──
 const Page = styled.div`
-  min-height: 100vh;
+  height: calc(100vh - 52px);
   display: grid;
   grid-template-columns: 1fr 480px;
   font-family: var(--font-sans, "DM Sans", sans-serif);
+  overflow: hidden;
 
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
+    height: auto;
+    min-height: calc(100vh - 52px);
+    overflow: visible;
   }
 `;
 
@@ -63,8 +67,8 @@ const LeftPanel = styled.div`
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 64px;
-  padding: 48px 56px;
+  gap: clamp(32px, 5vh, 64px);
+  padding: clamp(32px, 4vh, 48px) 56px;
 
   &::before {
     content: "";
@@ -188,13 +192,15 @@ const RightPanel = styled.div`
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 48px 40px;
+  padding: clamp(32px, 4vh, 48px) 40px;
   border-left: 1px solid ${C.border};
+  overflow: hidden;
 
   @media (max-width: 768px) {
     padding: 36px 24px 48px;
     border-left: none;
     border-top: 1px solid ${C.border};
+    overflow: visible;
   }
 `;
 
