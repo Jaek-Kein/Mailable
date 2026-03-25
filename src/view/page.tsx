@@ -1,9 +1,10 @@
 "use client";
 
 import styled from "@emotion/styled";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import StatCard from "@/src/components/StatCard";
 import EventCard from "@/src/components/EventCard";
+import AddEventModal from "@/src/components/AddEventModal";
 import { useEventStore } from "@/src/store/useEventStore";
 
 const Main = styled.main`
@@ -45,8 +46,23 @@ const ErrorMessage = styled.div`
     margin: 1rem 0;
 `;
 
+const AddButton = styled.button`
+    appearance: none;
+    background: #2563eb;
+    border: none;
+    border-radius: 8px;
+    padding: 0.5rem 1.1rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #fff;
+    cursor: pointer;
+    white-space: nowrap;
+    &:hover { background: #1d4ed8; }
+`;
+
 export default function Page() {
     const { events, loading, error, fetchEvents } = useEventStore();
+    const [showModal, setShowModal] = useState(false);
 
     useEffect(() => {
         fetchEvents();
@@ -68,23 +84,32 @@ export default function Page() {
     }
 
     return (
+        <>
+        {showModal && (
+            <AddEventModal onClose={() => { setShowModal(false); fetchEvents(); }} />
+        )}
         <Main>
             <Section aria-labelledby="dashboard-heading">
-                <header>
-                    <h1
-                        id="dashboard-heading"
-                        style={{ fontSize: "1.35rem", margin: 0 }}
-                    >
-                        대시보드
-                    </h1>
-                    <p
-                        style={{
-                            color: "#64748b",
-                            margin: "0.25rem 0 0.75rem",
-                        }}
-                    >
-                        행사·메일 발송 현황을 한눈에 확인하세요.
-                    </p>
+                <header style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem" }}>
+                    <div>
+                        <h1
+                            id="dashboard-heading"
+                            style={{ fontSize: "1.35rem", margin: 0 }}
+                        >
+                            대시보드
+                        </h1>
+                        <p
+                            style={{
+                                color: "#64748b",
+                                margin: "0.25rem 0 0.75rem",
+                            }}
+                        >
+                            행사·메일 발송 현황을 한눈에 확인하세요.
+                        </p>
+                    </div>
+                    <AddButton type="button" onClick={() => setShowModal(true)}>
+                        + 행사 추가
+                    </AddButton>
                 </header>
 
                 {error && (
@@ -127,5 +152,6 @@ export default function Page() {
                 </Grid3>
             </Section>
         </Main>
+        </>
     );
 }
