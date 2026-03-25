@@ -9,6 +9,7 @@ export async function POST(request: NextRequest) {
     const jsonResponse = await handleUpload({
       body,
       request,
+      token: process.env.BLOB_READ_WRITE_TOKEN,
       onBeforeGenerateToken: async () => {
         // 토큰 발급 시점에만 인증 확인
         const session = await auth();
