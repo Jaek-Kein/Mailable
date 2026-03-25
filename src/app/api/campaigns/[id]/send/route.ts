@@ -8,7 +8,7 @@ import { DeliveryStatus } from "@prisma/client";
 
 // CSV 행에서 이메일 컬럼 키를 찾습니다 (대소문자 무시)
 function findEmailKey(row: Record<string, string>): string | null {
-  const candidates = ["email", "이메일", "e-mail", "mail"];
+  const candidates = ["email", "이메일", "연락처", "e-mail", "mail"];
   for (const key of Object.keys(row)) {
     if (candidates.includes(key.toLowerCase())) return key;
   }
@@ -16,7 +16,7 @@ function findEmailKey(row: Record<string, string>): string | null {
 }
 
 function findNameKey(row: Record<string, string>): string | null {
-  const candidates = ["name", "이름", "성명", "참가자명"];
+  const candidates = ["name", "이름", "입금자명", "닉네임", "성명", "참가자명"];
   for (const key of Object.keys(row)) {
     if (candidates.includes(key.toLowerCase())) return key;
   }

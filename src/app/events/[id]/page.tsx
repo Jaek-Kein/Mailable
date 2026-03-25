@@ -230,6 +230,30 @@ const ModalFooter = styled.div`
     gap: 0.75rem;
 `;
 
+/* ────────── Column detection ────────── */
+const EMAIL_KEYS = ["email", "이메일", "연락처", "e-mail", "mail"];
+const NAME_KEYS = ["name", "이름", "입금자명", "닉네임", "성명", "참가자명"];
+const TIMESTAMP_KEYS = ["타임스탬프", "timestamp", "제출 시간", "응답 날짜", "응답시간", "submitted_at", "created_at"];
+
+function detectCol(keys: string[], colNames: string[]): string | null {
+  for (const col of colNames) {
+    if (keys.includes(col.toLowerCase())) return col;
+  }
+  return null;
+}
+
+/** rows의 컬럼 중 표시할 3개(타임스탬프·이름·이메일)를 순서대로 반환 */
+function getDisplayColumns(colNames: string[]): { key: string; label: string }[] {
+  const ts = detectCol(TIMESTAMP_KEYS, colNames);
+  const name = detectCol(NAME_KEYS, colNames);
+  const email = detectCol(EMAIL_KEYS, colNames);
+  return [
+    ts    && { key: ts,    label: ts },
+    name  && { key: name,  label: name },
+    email && { key: email, label: email },
+  ].filter(Boolean) as { key: string; label: string }[];
+}
+
 /* ────────── Utils ────────── */
 function formatDate(value: string | null) {
     if (!value) return "—";
@@ -316,12 +340,14 @@ export default function EventDetailPage() {
     if (error || !event) return <Page><ErrorMessage>{error ?? "행사를 찾을 수 없습니다."}</ErrorMessage></Page>;
 
     const rows = localRows;
-    const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
+    const allColumns = rows.length > 0 ? Object.keys(rows[0]) : [];
+    const displayColumns = getDisplayColumns(allColumns);
 
     // filteredRows carries the original row index for editing
+    // 검색은 표시 컬럼 범위 내에서만
     const filteredIndexed = filter.trim()
         ? rows.map((r, i) => ({ row: r, origIdx: i }))
-              .filter(({ row }) => Object.values(row).some((v) => v?.toLowerCase().includes(filter.toLowerCase())))
+              .filter(({ row }) => displayColumns.some(({ key }) => row[key]?.toLowerCase().includes(filter.toLowerCase())))
         : rows.map((r, i) => ({ row: r, origIdx: i }));
 
     async function handleCellSave(rowIndex: number, col: string, value: string) {
@@ -452,18 +478,18 @@ export default function EventDetailPage() {
                             <Table>
                                 <thead>
                                     <tr>
-                                        {columns.map((col) => <th key={col}>{col}</th>)}
+                                        {displayColumns.map(({ key, label }) => <th key={key}>{label}</th>)}
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {filteredIndexed.map(({ row, origIdx }) => (
                                         <tr key={origIdx}>
-                                            {columns.map((col) => {
-                                                const isEditing = editingCell?.rowIndex === origIdx && editingCell?.col === col;
+                                            {displayColumns.map(({ key }) => {
+                                                const isEditing = editingCell?.rowIndex === origIdx && editingCell?.col === key;
                                                 return (
                                                     <td
-                                                        key={col}
-                                                        onClick={() => { if (!isEditing) startEdit(origIdx, col); }}
+                                                        key={key}
+                                                        onClick={() => { if (!isEditing) startEdit(origIdx, key); }}
                                                         style={{ cursor: "pointer", minWidth: "80px" }}
                                                     >
                                                         {isEditing ? (
@@ -472,13 +498,13 @@ export default function EventDetailPage() {
                                                                 value={editValue}
                                                                 onChange={(e) => setEditValue(e.target.value)}
                                                                 onKeyDown={(e) => {
-                                                                    if (e.key === "Enter") handleCellSave(origIdx, col, editValue);
+                                                                    if (e.key === "Enter") handleCellSave(origIdx, key, editValue);
                                                                     if (e.key === "Escape") setEditingCell(null);
                                                                 }}
-                                                                onBlur={() => handleCellSave(origIdx, col, editValue)}
+                                                                onBlur={() => handleCellSave(origIdx, key, editValue)}
                                                             />
                                                         ) : (
-                                                            row[col] ?? "—"
+                                                            row[key] ?? "—"
                                                         )}
                                                     </td>
                                                 );
