@@ -4,7 +4,8 @@
       "Bash(ls -la /z/programming/event-auto-mailing/mailable/.env*)",
       "Bash(npx prisma:*)",
       "Bash(node -e \"const crypto = require\\(''crypto''\\); console.log\\(crypto.randomBytes\\(32\\).toString\\(''base64''\\)\\);\")",
-      "Bash(pnpm add:*)"
+      "Bash(pnpm add:*)",
+      "Bash(node -e \":*)"
     ]
   }
 }

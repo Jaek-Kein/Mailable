@@ -12,7 +12,9 @@
       "Bash(pnpm install:*)",
       "Bash(find z:/programming/event-auto-mailing/mailable/src -newer z:/programming/event-auto-mailing/mailable/.gitignore -name *.ts -o -newer z:/programming/event-auto-mailing/mailable/.gitignore -name *.tsx)",
       "Read(//c/Users/KEIN/.claude/projects/z--programming-event-auto-mailing-mailable/memory/**)",
-      "Bash(pnpm build:*)"
+      "Bash(pnpm build:*)",
+      "Bash(node -e \"const b = require\\(''z:/programming/event-auto-mailing/mailable/node_modules/@vercel/blob''\\); console.log\\(Object.keys\\(b\\).includes\\(''handleUpload''\\)\\)\")",
+      "Bash(node -e \"const b = require\\(''z:/programming/event-auto-mailing/mailable/node_modules/@vercel/blob/client''\\); console.log\\(Object.keys\\(b\\).filter\\(k => k.includes\\(''handle''\\) || k.includes\\(''Upload''\\)\\)\\)\")"
     ]
   }
 }

@@ -2,7 +2,6 @@
 
 import styled from "@emotion/styled";
 import { useRef, useEffect, FormEvent, useState, ChangeEvent } from "react";
-import { upload } from "@vercel/blob/client";
 import { useEventStore } from "@/src/store/useEventStore";
 
 /** Canvas API로 이미지를 WebP로 변환 (최대 800px). WebP 미지원 시 PNG로 폴백 */
@@ -279,18 +278,24 @@ export default function AddEventModal({ onClose }: Props) {
 
         const date = new Date(dateRaw).toISOString();
 
-        // 포스터 업로드 (클라이언트에서 WebP 변환 후 Vercel Blob에 직접 업로드)
+        // 포스터 업로드 (클라이언트에서 WebP 변환 후 서버 API → Vercel Blob put)
         let posterUrl: string | undefined;
         if (posterFile) {
             setUploading(true);
             try {
                 const webpBlob = await toWebP(posterFile);
                 const ext = webpBlob.type === "image/webp" ? "webp" : "png";
-                const blob = await upload(`posters/${Date.now()}.${ext}`, webpBlob, {
-                    access: "public",
-                    handleUploadUrl: "/api/upload/poster",
-                });
-                posterUrl = blob.url;
+                const fd = new FormData();
+                fd.append("file", new File([webpBlob], `poster.${ext}`, { type: webpBlob.type }));
+                const res = await fetch("/api/upload/poster", { method: "POST", body: fd });
+                if (!res.ok) {
+                    const text = await res.text();
+                    let msg = "포스터 업로드 실패";
+                    try { msg = JSON.parse(text).error ?? msg; } catch { /* plain text */ }
+                    throw new Error(msg);
+                }
+                const json = await res.json();
+                posterUrl = json.url;
             } catch (err) {
                 setError(err instanceof Error ? err.message : "포스터 업로드 중 오류가 발생했습니다.");
                 setUploading(false);
