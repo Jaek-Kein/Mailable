@@ -2,7 +2,30 @@
 
 import styled from "@emotion/styled";
 import { useRef, useEffect, FormEvent, useState, ChangeEvent } from "react";
+import { upload } from "@vercel/blob/client";
 import { useEventStore } from "@/src/store/useEventStore";
+
+/** Canvas API로 이미지를 WebP로 변환 (최대 800px) */
+async function toWebP(file: File): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            const MAX_W = 800;
+            const scale = Math.min(1, MAX_W / img.width);
+            const canvas = document.createElement("canvas");
+            canvas.width = Math.round(img.width * scale);
+            canvas.height = Math.round(img.height * scale);
+            canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob(
+                (blob) => blob ? resolve(blob) : reject(new Error("WebP 변환 실패")),
+                "image/webp",
+                0.8
+            );
+        };
+        img.onerror = () => reject(new Error("이미지를 읽을 수 없습니다."));
+        img.src = URL.createObjectURL(file);
+    });
+}
 
 interface Props {
     onClose: () => void;
@@ -248,22 +271,17 @@ export default function AddEventModal({ onClose }: Props) {
 
         const date = new Date(dateRaw).toISOString();
 
-        // 포스터 업로드
+        // 포스터 업로드 (클라이언트에서 WebP 변환 후 Vercel Blob에 직접 업로드)
         let posterUrl: string | undefined;
         if (posterFile) {
             setUploading(true);
             try {
-                const uploadFd = new FormData();
-                uploadFd.append("file", posterFile);
-                const res = await fetch("/api/upload/poster", { method: "POST", body: uploadFd });
-                if (!res.ok) {
-                    const text = await res.text();
-                    let msg = "포스터 업로드 실패";
-                    try { msg = JSON.parse(text).error ?? msg; } catch { /* plain text error */ }
-                    throw new Error(msg);
-                }
-                const json = await res.json();
-                posterUrl = json.url;
+                const webpBlob = await toWebP(posterFile);
+                const blob = await upload(`posters/${Date.now()}.webp`, webpBlob, {
+                    access: "public",
+                    handleUploadUrl: "/api/upload/poster",
+                });
+                posterUrl = blob.url;
             } catch (err) {
                 setError(err instanceof Error ? err.message : "포스터 업로드 중 오류가 발생했습니다.");
                 setUploading(false);

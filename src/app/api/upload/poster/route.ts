@@ -1,41 +1,29 @@
+import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/src/lib/auth";
-import { put } from "@vercel/blob";
-import sharp from "sharp";
 
+// 클라이언트가 Vercel Blob에 직접 업로드할 수 있는 토큰을 발급하는 엔드포인트
+export async function POST(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id)
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+  const body = (await request.json()) as HandleUploadBody;
 
-export async function POST(req: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.id)
-      return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
-
-    const formData = await req.formData();
-    const file = formData.get("file") as File | null;
-
-    if (!file) return NextResponse.json({ ok: false, error: "file required" }, { status: 400 });
-    if (file.size > MAX_SIZE)
-      return NextResponse.json({ ok: false, error: "파일이 너무 큽니다 (최대 5MB)" }, { status: 400 });
-
-    const buffer = Buffer.from(await file.arrayBuffer());
-
-    // WebP 변환 (최대 폭 800px, 품질 80)
-    const webp = await sharp(buffer)
-      .resize({ width: 800, withoutEnlargement: true })
-      .webp({ quality: 80 })
-      .toBuffer();
-
-    const filename = `posters/${session.user.id}/${Date.now()}.webp`;
-    const blob = await put(filename, webp, {
-      access: "public",
-      contentType: "image/webp",
+    const jsonResponse = await handleUpload({
+      body,
+      request,
+      onBeforeGenerateToken: async () => ({
+        allowedContentTypes: ["image/webp"],
+        maximumSizeInBytes: 3 * 1024 * 1024, // 변환 후 최대 3MB
+        addRandomSuffix: true,
+      }),
+      onUploadCompleted: async () => {},
     });
-
-    return NextResponse.json({ ok: true, url: blob.url });
+    return NextResponse.json(jsonResponse);
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+    return NextResponse.json({ error: msg }, { status: 400 });
   }
 }
