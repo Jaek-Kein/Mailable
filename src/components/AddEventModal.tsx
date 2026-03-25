@@ -256,8 +256,13 @@ export default function AddEventModal({ onClose }: Props) {
                 const uploadFd = new FormData();
                 uploadFd.append("file", posterFile);
                 const res = await fetch("/api/upload/poster", { method: "POST", body: uploadFd });
+                if (!res.ok) {
+                    const text = await res.text();
+                    let msg = "포스터 업로드 실패";
+                    try { msg = JSON.parse(text).error ?? msg; } catch { /* plain text error */ }
+                    throw new Error(msg);
+                }
                 const json = await res.json();
-                if (!json.ok) throw new Error(json.error ?? "포스터 업로드 실패");
                 posterUrl = json.url;
             } catch (err) {
                 setError(err instanceof Error ? err.message : "포스터 업로드 중 오류가 발생했습니다.");
