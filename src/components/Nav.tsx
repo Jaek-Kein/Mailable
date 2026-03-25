@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { signOut, useSession } from 'next-auth/react';
+import { usePathname } from 'next/navigation';
 import styled from '@emotion/styled';
 
 const Bar = styled.nav`
@@ -99,6 +100,9 @@ const LogoutBtn = styled(NavBtn)`
 export default function Nav() {
   const { data: session } = useSession();
   const user = session?.user;
+  const pathname = usePathname();
+
+  if (pathname === '/login') return null;
 
   const handleSettings = () => {
     alert('설정 기능은 곧 추가될 예정입니다.');

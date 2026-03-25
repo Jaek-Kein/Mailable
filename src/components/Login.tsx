@@ -46,7 +46,7 @@ const floatEnv3 = keyframes`
 
 // ── Styled Components ──
 const Page = styled.div`
-  height: calc(100vh - 52px);
+  height: 100vh;
   display: grid;
   grid-template-columns: 1fr 480px;
   font-family: var(--font-sans, "DM Sans", sans-serif);
@@ -55,7 +55,7 @@ const Page = styled.div`
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
     height: auto;
-    min-height: calc(100vh - 52px);
+    min-height: 100vh;
     overflow: visible;
   }
 `;

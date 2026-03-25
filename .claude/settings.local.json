@@ -5,7 +5,12 @@
       "Bash(npx prisma:*)",
       "Bash(node -e \"const crypto = require\\(''crypto''\\); console.log\\(crypto.randomBytes\\(32\\).toString\\(''base64''\\)\\);\")",
       "Bash(pnpm add:*)",
-      "Bash(node -e \":*)"
+      "Bash(node -e \":*)",
+      "Bash(taskkill /PID 9952 /F)",
+      "Bash(cmd.exe /c \"taskkill /PID 9952 /F\")",
+      "Bash(cmd.exe /c \"taskkill /IM node.exe /F 2>&1\")",
+      "Bash(cmd.exe /c \"rd /s /q \"\"Z:\\\\programming\\\\event-auto-mailing\\\\mailable\\\\.next\"\" && echo done\")",
+      "Bash(cmd.exe /c \"dir \"\"Z:\\\\programming\\\\event-auto-mailing\\\\mailable\\\\.next\"\" 2>&1\")"
     ]
   }
 }
