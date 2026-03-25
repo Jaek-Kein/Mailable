@@ -61,7 +61,7 @@ const AddButton = styled.button`
 `;
 
 export default function Page() {
-    const { events, loading, error, fetchEvents } = useEventStore();
+    const { events, loading, error, fetchEvents, removeEvent } = useEventStore();
     const [showModal, setShowModal] = useState(false);
 
     useEffect(() => {
@@ -139,13 +139,14 @@ export default function Page() {
                         </div>
                     ) : (
                         events.map((ev) => (
-                            <EventCard 
-                                key={ev.id} 
-                                title={ev.title} 
-                                date={ev.date} 
-                                place={ev.place} 
-                                sheetUrl={ev.sheetUrl} 
+                            <EventCard
+                                key={ev.id}
+                                title={ev.title}
+                                date={ev.date}
+                                place={ev.place}
+                                sheetUrl={ev.sheetUrl}
                                 id={ev.id}
+                                onDelete={removeEvent}
                             />
                         ))
                     )}
