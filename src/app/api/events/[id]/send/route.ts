@@ -5,22 +5,7 @@ import { prisma } from "@/src/lib/prisma";
 import { sendGmail, renderTemplate } from "@/src/lib/gmail";
 import { decryptJson } from "@/src/lib/crypto";
 import { DeliveryStatus } from "@prisma/client";
-
-function findEmailKey(row: Record<string, string>): string | null {
-  const candidates = ["email", "이메일", "연락처", "e-mail", "mail"];
-  for (const key of Object.keys(row)) {
-    if (candidates.includes(key.toLowerCase())) return key;
-  }
-  return null;
-}
-
-function findNameKey(row: Record<string, string>): string | null {
-  const candidates = ["name", "이름", "입금자명", "닉네임", "성명", "참가자명"];
-  for (const key of Object.keys(row)) {
-    if (candidates.includes(key.toLowerCase())) return key;
-  }
-  return null;
-}
+import { findEmailKey, findNameKey } from "@/src/lib/columnDetection";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();

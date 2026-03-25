@@ -4,6 +4,7 @@ import styled from "@emotion/styled";
 import { useEffect, useState, useMemo, useCallback, memo, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useParams, useRouter } from "next/navigation";
+import { theme } from "@/src/styles/theme";
 
 interface EventData {
     payload: { rows: Record<string, string>[]; cancelledEmails?: string[] };
@@ -23,16 +24,16 @@ interface Event {
     data: EventData | null;
 }
 
-/* ────────── Palette (mirrors Login design tokens) ────────── */
+/* ────────── Palette (derived from theme) ────────── */
 const C = {
-    ink: "#1a1a2e",
-    inkSoft: "#3d3d5c",
-    inkMuted: "#8888a8",
-    paper: "#faf9f7",
-    accent: "#e8533a",
-    accentLight: "#fdf1ee",
-    border: "#e2dfd8",
-    card: "#ffffff",
+    ink: theme.color.text,
+    inkSoft: theme.color.sub,
+    inkMuted: theme.color.muted,
+    paper: theme.color.bg,
+    accent: theme.color.accent,
+    accentLight: theme.color.accentLight,
+    border: theme.color.border,
+    card: theme.color.card,
 } as const;
 
 /* ────────── Styles ────────── */

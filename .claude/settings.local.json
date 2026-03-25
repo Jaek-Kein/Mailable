@@ -17,7 +17,8 @@
       "Bash(grep -r \"N+1\\\\|SELECT.*COUNT\" /z/programming/event-auto-mailing/mailable/src/app/api --include=*.ts)",
       "Bash(wc -l /z/programming/event-auto-mailing/mailable/src/app/events/[id]/page.tsx /z/programming/event-auto-mailing/mailable/src/view/page.tsx /z/programming/event-auto-mailing/mailable/src/components/AddEventModal.tsx)",
       "Bash(npx tsc:*)",
-      "Bash(node -e \"console.log\\(require\\(''crypto''\\).randomBytes\\(32\\).toString\\(''hex''\\)\\)\")"
+      "Bash(node -e \"console.log\\(require\\(''crypto''\\).randomBytes\\(32\\).toString\\(''hex''\\)\\)\")",
+      "Bash(grep -r \"hardcoded\\\\|magic\\\\|FIXME\\\\|TODO\" /z/programming/event-auto-mailing/mailable/src --include=*.ts --include=*.tsx)"
     ],
     "additionalDirectories": [
       "z:\\programming\\event-auto-mailing\\mailable\\src\\app\\api\\events\\[id]"

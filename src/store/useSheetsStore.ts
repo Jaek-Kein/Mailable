@@ -30,7 +30,6 @@ export const useSheetStore = create<SheetState & SheetActions>((set) => ({
                 body: JSON.stringify({ eventId, sheetUrl }),
             });
             const json = await res.json();
-            console.log(json);
             if (!res.ok || !json.ok)
                 throw new Error(json.error || "ingest failed");
             set({
