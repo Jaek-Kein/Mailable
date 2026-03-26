@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Envelope body -->
+  <rect x="2" y="8" width="28" height="18" rx="3" fill="#c9a84c"/>
+
+  <!-- Flap -->
+  <path d="M2 8 L16 20 L30 8 Z" fill="#a8882e"/>
+
+  <!-- M centered -->
+  <path d="M10 22 L10 14 L16 19.5 L22 14 L22 22" stroke="#faf9f7" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

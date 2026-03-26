@@ -20,6 +20,9 @@ const dmSans = DM_Sans({
 export const metadata: Metadata = {
   title: 'Mailable | 행사 자동 메일링',
   description: '행사 자동 메일링 관리 콘솔',
+  icons: {
+    icon: '/icon.svg',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
