@@ -27,7 +27,8 @@
       "Bash(curl -L -s \"https://docs.google.com/spreadsheets/d/1oFT9YuoQDwEB8dODAbnZI9w9QLyRVMfxXzACB8S9FT8/export?format=csv&gid=0\")"
     ],
     "additionalDirectories": [
-      "z:\\programming\\event-auto-mailing\\mailable\\src\\app\\api\\events\\[id]"
+      "z:\\programming\\event-auto-mailing\\mailable\\src\\app\\api\\events\\[id]",
+      "z:\\programming\\event-auto-mailing\\mailable"
     ]
   }
 }

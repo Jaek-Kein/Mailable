@@ -6,6 +6,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { useParams, useRouter } from "next/navigation";
 import { theme } from "@/src/styles/theme";
 import EditEventModal from "@/src/components/EditEventModal";
+import { useSheetStore } from "@/src/store/useSheetsStore";
 
 interface EventData {
     payload: { rows: Record<string, string>[]; cancelledEmails?: string[]; paidEmails?: string[] };
@@ -916,6 +917,33 @@ export default function EventDetailPage() {
     const [showCancelled, setShowCancelled] = useState(false);
     const [paidRids, setPaidRids] = useState<Set<string>>(new Set());
     const [pendingRowIds, setPendingRowIds] = useState<Set<string>>(new Set());
+    const [refreshing, setRefreshing] = useState(false);
+    const ingestFromSheetUrl = useSheetStore((s) => s.ingestFromSheetUrl);
+
+    const handleRefresh = useCallback(async () => {
+        if (!event?.sheetUrl || refreshing) return;
+        setRefreshing(true);
+        const result = await ingestFromSheetUrl(event.sheetUrl, id);
+        if (!result) {
+            // ingest 성공 시 DB에서 최신 데이터 다시 로드
+            const res = await fetch(`/api/events/${id}`);
+            const data = await res.json();
+            if (data.ok) {
+                const loaded: Record<string, string>[] = data.event?.data?.payload?.rows ?? [];
+                const dMap = data.deliveryMap ?? {};
+                const cMap = data.event?.data?.payload?.checkinMap ?? {};
+                const cancelledRidsArr: string[] = data.event?.data?.payload?.cancelledRids ?? [];
+                const paidRidsArr: string[] = data.event?.data?.payload?.paidRids ?? [];
+                setLocalRows(loaded);
+                setDeliveryMap(dMap);
+                setCheckinMap(cMap);
+                setCancelledRids(new Set(cancelledRidsArr));
+                setPaidRids(new Set(paidRidsArr));
+                setEvent((prev) => prev ? { ...prev, data: data.event.data } : prev);
+            }
+        }
+        setRefreshing(false);
+    }, [event?.sheetUrl, id, ingestFromSheetUrl, refreshing]);
 
 
     useEffect(() => {
@@ -1256,6 +1284,16 @@ export default function EventDetailPage() {
                             </span>
                         )}
                     </SectionTitle>
+                    {event.sheetUrl && (
+                        <GhostBtn
+                            onClick={handleRefresh}
+                            disabled={refreshing}
+                            style={{ fontSize: "0.8rem" }}
+                            title="Google Sheets에서 최신 데이터를 다시 가져옵니다"
+                        >
+                            {refreshing ? "새로고침 중..." : "↻ 새로고침"}
+                        </GhostBtn>
+                    )}
                     {activeTab === "email" && (
                     <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
                         {rows.length > 0 && (
