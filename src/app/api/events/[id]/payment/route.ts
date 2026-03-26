@@ -1,5 +1,5 @@
-// POST /api/events/[id]/cancel — 참가자 참여 취소 / 복원
-// body: { rowId: string, cancelled: boolean }
+// POST /api/events/[id]/payment — 입금 확인 토글 (단건 또는 일괄)
+// body: { rowId: string, paid: boolean } | { rowIds: string[], paid: boolean }
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/src/lib/auth";
@@ -7,8 +7,11 @@ import { prisma } from "@/src/lib/prisma";
 import { encryptJson, decryptJson } from "@/src/lib/crypto";
 
 const schema = z.object({
-  rowId: z.string().min(1),
-  cancelled: z.boolean(),
+  rowId: z.string().min(1).optional(),
+  rowIds: z.array(z.string().min(1)).min(1).optional(),
+  paid: z.boolean(),
+}).refine((d) => d.rowId !== undefined || d.rowIds !== undefined, {
+  message: "rowId 또는 rowIds 중 하나는 필수입니다",
 });
 
 export async function POST(
@@ -39,7 +42,8 @@ export async function POST(
     return NextResponse.json({ ok: false, error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { rowId, cancelled } = parsed.data;
+  const { paid } = parsed.data;
+  const targets: string[] = parsed.data.rowIds ?? (parsed.data.rowId ? [parsed.data.rowId] : []);
 
   const eventData = await prisma.eventData.findUnique({ where: { eventId: id } });
   if (!eventData) return NextResponse.json({ ok: false, error: "데이터 없음" }, { status: 404 });
@@ -50,27 +54,27 @@ export async function POST(
     checkinMap?: Record<string, string | null>;
     paidRids?: string[];
   }>(eventData.payload);
-  const rows: Record<string, string>[] = Array.isArray(payload?.rows) ? payload.rows : [];
-  const checkinMap = payload?.checkinMap ?? {};
-  const paidRids = payload?.paidRids ?? [];
 
-  let cancelledRids: string[] = Array.isArray(payload?.cancelledRids) ? payload.cancelledRids : [];
+  let paidRids: string[] = Array.isArray(payload?.paidRids) ? payload.paidRids : [];
 
-  if (cancelled) {
-    if (!cancelledRids.includes(rowId)) {
-      cancelledRids = [...cancelledRids, rowId];
+  if (paid) {
+    for (const rid of targets) {
+      if (!paidRids.includes(rid)) {
+        paidRids = [...paidRids, rid];
+      }
     }
   } else {
-    cancelledRids = cancelledRids.filter((r) => r !== rowId);
+    const targetSet = new Set(targets);
+    paidRids = paidRids.filter((r) => !targetSet.has(r));
   }
 
   await prisma.eventData.update({
     where: { eventId: id },
     data: {
-      payload: encryptJson({ rows, cancelledRids, checkinMap, paidRids }),
+      payload: encryptJson({ ...payload, paidRids }),
       updatedAt: new Date(),
     },
   });
 
-  return NextResponse.json({ ok: true, cancelledRids });
+  return NextResponse.json({ ok: true, paidRids });
 }

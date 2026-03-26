@@ -1,6 +1,6 @@
 // POST /api/events/[id]/checkin — 입장 체크인 상태 토글
-// body: { email: string; checkedIn: boolean }
-// checkinMap은 EventData.payload의 별도 필드에 { [email]: ISO_string | null } 형태로 저장
+// body: { rowId: string; checkedIn: boolean }
+// checkinMap은 EventData.payload의 별도 필드에 { [rowId]: ISO_string | null } 형태로 저장
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/src/lib/auth";
@@ -8,7 +8,7 @@ import { prisma } from "@/src/lib/prisma";
 import { encryptJson, decryptJson } from "@/src/lib/crypto";
 
 const bodySchema = z.object({
-  email: z.string().email(),
+  rowId: z.string().min(1),
   checkedIn: z.boolean(),
 });
 
@@ -40,7 +40,7 @@ export async function POST(
     return NextResponse.json({ ok: false, error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { email, checkedIn } = parsed.data;
+  const { rowId, checkedIn } = parsed.data;
 
   const eventData = await prisma.eventData.findUnique({ where: { eventId: id } });
   if (!eventData) return NextResponse.json({ ok: false, error: "데이터 없음" }, { status: 404 });
@@ -49,9 +49,9 @@ export async function POST(
   const checkinMap: Record<string, string | null> = payload.checkinMap ?? {};
 
   if (checkedIn) {
-    checkinMap[email] = new Date().toISOString();
+    checkinMap[rowId] = new Date().toISOString();
   } else {
-    checkinMap[email] = null;
+    checkinMap[rowId] = null;
   }
 
   await prisma.eventData.update({
@@ -59,7 +59,7 @@ export async function POST(
     data: { payload: encryptJson({ ...payload, checkinMap }) },
   });
 
-  return NextResponse.json({ ok: true, email, checkedIn, checkedInAt: checkinMap[email] });
+  return NextResponse.json({ ok: true, rowId, checkedIn, checkedInAt: checkinMap[rowId] });
 }
 
 // DELETE /api/events/[id]/checkin — 전체 체크인 초기화

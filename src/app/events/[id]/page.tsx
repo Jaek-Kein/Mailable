@@ -5,9 +5,10 @@ import { useEffect, useState, useMemo, useCallback, memo, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useParams, useRouter } from "next/navigation";
 import { theme } from "@/src/styles/theme";
+import EditEventModal from "@/src/components/EditEventModal";
 
 interface EventData {
-    payload: { rows: Record<string, string>[]; cancelledEmails?: string[] };
+    payload: { rows: Record<string, string>[]; cancelledEmails?: string[]; paidEmails?: string[] };
     version: number;
 }
 
@@ -17,6 +18,7 @@ interface Event {
     date: string | null;
     place: string | null;
     sheetUrl: string | null;
+    posterUrl?: string | null;
     emailSubject: string | null;
     emailContent: string | null;
     status: "ONGOING" | "CLOSED";
@@ -548,6 +550,21 @@ const CancelBtn = styled.button<{ cancelled: boolean }>`
     &:hover { opacity: 0.75; }
 `;
 
+const PaidBtn = styled.button<{ paid: boolean }>`
+    appearance: none;
+    border: 1px solid ${({ paid }) => paid ? "#bfdbfe" : C.border};
+    background: ${({ paid }) => paid ? "#eff6ff" : "transparent"};
+    color: ${({ paid }) => paid ? "#1d4ed8" : C.inkMuted};
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 0.72rem;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.15s, background 0.15s, border-color 0.15s, color 0.15s;
+    &:hover { opacity: 0.75; }
+`;
+
 /* ────────── AttendanceTab ────────── */
 interface AttendanceTabProps {
     eventId: string;
@@ -586,24 +603,24 @@ const AttendanceTab = memo(function AttendanceTab({ eventId, rows, emailColKey, 
         [checkinMap]
     );
 
-    async function toggleCheckin(email: string, current: boolean) {
+    async function toggleCheckin(rowId: string, current: boolean) {
         const next = !current;
         // 낙관적 업데이트
         setCheckinMap((prev) => {
-            const updated = { ...prev, [email]: next ? new Date().toISOString() : null };
+            const updated = { ...prev, [rowId]: next ? new Date().toISOString() : null };
             onCheckinMapChange?.(updated);
             return updated;
         });
         const res = await fetch(`/api/events/${eventId}/checkin`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, checkedIn: next }),
+            body: JSON.stringify({ rowId, checkedIn: next }),
         });
         const data = await res.json();
         if (!data.ok) {
             // 실패 시 롤백
             setCheckinMap((prev) => {
-                const rolled = { ...prev, [email]: current ? new Date().toISOString() : null };
+                const rolled = { ...prev, [rowId]: current ? new Date().toISOString() : null };
                 onCheckinMapChange?.(rolled);
                 return rolled;
             });
@@ -673,13 +690,14 @@ const AttendanceTab = memo(function AttendanceTab({ eventId, rows, emailColKey, 
                     filtered.map(({ row, i }) => {
                         const email = emailColKey ? (row[emailColKey] ?? "") : "";
                         const name = nameColKey ? (row[nameColKey] ?? "") : `참가자 ${i + 1}`;
-                        const checkedInAt = email ? checkinMap[email] : null;
+                        const rid = row._rid ?? "";
+                        const checkedInAt = rid ? checkinMap[rid] : null;
                         const isCheckedIn = !!checkedInAt;
                         return (
                             <CheckinRow
-                                key={i}
+                                key={rid || i}
                                 checked={isCheckedIn}
-                                onClick={() => email && toggleCheckin(email, isCheckedIn)}
+                                onClick={() => rid && toggleCheckin(rid, isCheckedIn)}
                                 role="button"
                                 aria-pressed={isCheckedIn}
                             >
@@ -693,8 +711,8 @@ const AttendanceTab = memo(function AttendanceTab({ eventId, rows, emailColKey, 
                                         {new Date(checkedInAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })} 입장
                                     </CheckinTime>
                                 )}
-                                {!email && (
-                                    <span style={{ fontSize: "0.72rem", color: C.inkMuted }}>이메일 없음 (체크 불가)</span>
+                                {!rid && (
+                                    <span style={{ fontSize: "0.72rem", color: C.inkMuted }}>ID 없음 (재수집 필요)</span>
                                 )}
                             </CheckinRow>
                         );
@@ -854,11 +872,13 @@ export default function EventDetailPage() {
     const [checkedIndices, setCheckedIndices] = useState<Set<number>>(new Set());
 
     const [modalOpen, setModalOpen] = useState(false);
+    const [editModalOpen, setEditModalOpen] = useState(false);
     const [sendResult, setSendResult] = useState<{ sentCount: number; failCount: number; total: number; errors: { email: string; reason: string }[] } | null>(null);
     const [activeTab, setActiveTab] = useState<"email" | "checkin">("email");
     const [checkinMap, setCheckinMap] = useState<Record<string, string | null>>({});
-    const [cancelledEmails, setCancelledEmails] = useState<Set<string>>(new Set());
+    const [cancelledRids, setCancelledRids] = useState<Set<string>>(new Set());
     const [showCancelled, setShowCancelled] = useState(false);
+    const [paidRids, setPaidRids] = useState<Set<string>>(new Set());
 
 
     useEffect(() => {
@@ -870,24 +890,26 @@ export default function EventDetailPage() {
                 const loaded: Record<string, string>[] = data.event?.data?.payload?.rows ?? [];
                 const dMap: Record<string, { status: string; sentAt: string | null; openedAt: string | null }> = data.deliveryMap ?? {};
                 const cMap: Record<string, string | null> = data.event?.data?.payload?.checkinMap ?? {};
-                const cancelledArr: string[] = data.event?.data?.payload?.cancelledEmails ?? [];
+                const cancelledRidsArr: string[] = data.event?.data?.payload?.cancelledRids ?? [];
+                const paidRidsArr: string[] = data.event?.data?.payload?.paidRids ?? [];
                 setLocalRows(loaded);
                 setDeliveryMap(dMap);
                 setCheckinMap(cMap);
-                setCancelledEmails(new Set(cancelledArr.map((e: string) => e.toLowerCase())));
+                setCancelledRids(new Set(cancelledRidsArr));
+                setPaidRids(new Set(paidRidsArr));
 
                 const SENT_STATUSES = new Set(["SENT", "DELIVERED", "OPENED", "CLICKED"]);
                 const allCols = loaded.length > 0 ? Object.keys(loaded[0]) : [];
                 const emailKey = detectCol(EMAIL_KEYS, allCols);
-                const cancelledSet = new Set(cancelledArr.map((e: string) => e.toLowerCase()));
+                const cancelledRidSet = new Set(cancelledRidsArr);
                 const defaultSelected = new Set(
                     loaded
                         .map((row, i) => ({ row, i }))
                         .filter(({ row }) => {
+                            if (cancelledRidSet.has(row._rid ?? "")) return false;
                             if (!emailKey) return true;
                             const email = row[emailKey]?.trim();
                             if (!email) return true;
-                            if (cancelledSet.has(email.toLowerCase())) return false;
                             const delivery = dMap[email];
                             return !delivery || !SENT_STATUSES.has(delivery.status);
                         })
@@ -907,13 +929,12 @@ export default function EventDetailPage() {
         return localRows
             .map((r, i) => ({ row: r, origIdx: i }))
             .filter(({ row }) => {
-                const email = emailColKey ? row[emailColKey]?.trim().toLowerCase() : null;
-                const isCancelled = email ? cancelledEmails.has(email) : false;
+                const isCancelled = row._rid ? cancelledRids.has(row._rid) : false;
                 if (isCancelled && !showCancelled) return false;
                 if (!filter.trim()) return true;
                 return displayColumns.some(({ key }) => row[key]?.toLowerCase().includes(filter.toLowerCase()));
             });
-    }, [localRows, filter, displayColumns, cancelledEmails, showCancelled, emailColKey]);
+    }, [localRows, filter, displayColumns, cancelledRids, showCancelled]);
 
     const tableContainerRef = useRef<HTMLDivElement>(null);
     const rowVirtualizer = useVirtualizer({
@@ -997,18 +1018,76 @@ export default function EventDetailPage() {
         });
     }
 
+    async function handlePaymentToggle(origIdx: number) {
+        const rowId = localRows[origIdx]?._rid;
+        if (!rowId) return;
+        const isPaid = paidRids.has(rowId);
+        const next = !isPaid;
+
+        // 낙관적 업데이트
+        setPaidRids((prev) => {
+            const s = new Set(prev);
+            next ? s.add(rowId) : s.delete(rowId);
+            return s;
+        });
+
+        const res = await fetch(`/api/events/${id}/payment`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ rowId, paid: next }),
+        });
+        const data = await res.json();
+        if (!data.ok) {
+            // 실패 시 롤백
+            setPaidRids((prev) => {
+                const s = new Set(prev);
+                isPaid ? s.add(rowId) : s.delete(rowId);
+                return s;
+            });
+        }
+    }
+
+    async function handleBulkPayment(paid: boolean) {
+        const rowIds = Array.from(checkedIndices)
+            .map((i) => localRows[i]?._rid)
+            .filter((r): r is string => !!r);
+        if (rowIds.length === 0) return;
+
+        // 낙관적 업데이트
+        setPaidRids((prev) => {
+            const s = new Set(prev);
+            if (paid) rowIds.forEach((r) => s.add(r));
+            else rowIds.forEach((r) => s.delete(r));
+            return s;
+        });
+
+        const res = await fetch(`/api/events/${id}/payment`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ rowIds, paid }),
+        });
+        const data = await res.json();
+        if (!data.ok) {
+            // 실패 시 롤백
+            setPaidRids((prev) => {
+                const s = new Set(prev);
+                if (paid) rowIds.forEach((r) => s.delete(r));
+                else rowIds.forEach((r) => s.add(r));
+                return s;
+            });
+        }
+    }
+
     async function handleCancelToggle(origIdx: number) {
-        if (!emailColKey) return;
-        const email = localRows[origIdx]?.[emailColKey]?.trim();
-        if (!email) return;
-        const emailLower = email.toLowerCase();
-        const isCancelled = cancelledEmails.has(emailLower);
+        const rowId = localRows[origIdx]?._rid;
+        if (!rowId) return;
+        const isCancelled = cancelledRids.has(rowId);
         const next = !isCancelled;
 
         // 낙관적 업데이트
-        setCancelledEmails((prev) => {
+        setCancelledRids((prev) => {
             const s = new Set(prev);
-            next ? s.add(emailLower) : s.delete(emailLower);
+            next ? s.add(rowId) : s.delete(rowId);
             return s;
         });
         // 취소 시 체크 해제
@@ -1017,14 +1096,14 @@ export default function EventDetailPage() {
         const res = await fetch(`/api/events/${id}/cancel`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, cancelled: next }),
+            body: JSON.stringify({ rowId, cancelled: next }),
         });
         const data = await res.json();
         if (!data.ok) {
             // 실패 시 롤백
-            setCancelledEmails((prev) => {
+            setCancelledRids((prev) => {
                 const s = new Set(prev);
-                isCancelled ? s.add(emailLower) : s.delete(emailLower);
+                isCancelled ? s.add(rowId) : s.delete(rowId);
                 return s;
             });
         }
@@ -1060,6 +1139,12 @@ export default function EventDetailPage() {
                     <Badge status={event.status}>
                         {event.status === "ONGOING" ? "진행 중" : "종료"}
                     </Badge>
+                    <GhostBtn
+                        style={{ marginLeft: "auto", fontSize: "0.8rem" }}
+                        onClick={() => setEditModalOpen(true)}
+                    >
+                        행사 정보 수정
+                    </GhostBtn>
                 </div>
                 <MetaRow>
                     <span>📅 {formatDate(event.date)}</span>
@@ -1106,8 +1191,8 @@ export default function EventDetailPage() {
                     <SectionTitle style={{ margin: 0 }}>
                         {activeTab === "checkin" ? "입장 체크" : "참가자 데이터"}{" "}
                         {rows.length > 0 && (
-                            cancelledEmails.size > 0
-                                ? `(${rows.length - cancelledEmails.size}명 활성 / 전체 ${rows.length}명)`
+                            cancelledRids.size > 0
+                                ? `(${rows.length - cancelledRids.size}명 활성 / 전체 ${rows.length}명)`
                                 : `(${rows.length}명)`
                         )}
                         {event.data && (
@@ -1126,9 +1211,9 @@ export default function EventDetailPage() {
                                     value={filter}
                                     onChange={(e) => setFilter(e.target.value)}
                                 />
-                                {cancelledEmails.size > 0 && (
+                                {cancelledRids.size > 0 && (
                                     <GhostBtn onClick={() => setShowCancelled((v) => !v)} style={{ fontSize: "0.8rem" }}>
-                                        {showCancelled ? `취소자 숨기기 (${cancelledEmails.size})` : `취소자 보기 (${cancelledEmails.size})`}
+                                        {showCancelled ? `취소자 숨기기 (${cancelledRids.size})` : `취소자 보기 (${cancelledRids.size})`}
                                     </GhostBtn>
                                 )}
                                 <GhostBtn onClick={() => exportCsv(localRows, `${event.title}_participants.csv`)}>
@@ -1183,6 +1268,25 @@ export default function EventDetailPage() {
                                     >
                                         전체 선택
                                     </button>
+                                    {emailColKey && (
+                                        <>
+                                            <span style={{ width: "1px", height: "14px", background: C.border, display: "inline-block", margin: "0 0.1rem" }} />
+                                            <button
+                                                type="button"
+                                                onClick={() => handleBulkPayment(true)}
+                                                style={{ background: "none", border: "none", color: "#1d4ed8", cursor: "pointer", fontSize: "0.8rem", padding: 0, textDecoration: "underline" }}
+                                            >
+                                                일괄 입금
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleBulkPayment(false)}
+                                                style={{ background: "none", border: "none", color: C.inkMuted, cursor: "pointer", fontSize: "0.8rem", padding: 0, textDecoration: "underline" }}
+                                            >
+                                                일괄 미입금
+                                            </button>
+                                        </>
+                                    )}
                                 </SelectBar>
                             )}
                         </div>
@@ -1201,6 +1305,7 @@ export default function EventDetailPage() {
                                             />
                                         </CheckTh>
                                         {displayColumns.map(({ key, label }) => <th key={key}>{label}</th>)}
+                                        <th style={{ whiteSpace: "nowrap" }}>입금</th>
                                         <th style={{ whiteSpace: "nowrap" }}>발송 상태</th>
                                         <th style={{ whiteSpace: "nowrap" }}></th>
                                     </tr>
@@ -1208,13 +1313,12 @@ export default function EventDetailPage() {
                                 <tbody>
                                     {rowVirtualizer.getVirtualItems().length > 0 && (
                                         <tr style={{ height: `${rowVirtualizer.getVirtualItems()[0].start}px` }}>
-                                            <td colSpan={displayColumns.length + 3} style={{ padding: 0, border: "none" }} />
+                                            <td colSpan={displayColumns.length + 4} style={{ padding: 0, border: "none" }} />
                                         </tr>
                                     )}
                                     {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                                         const { row, origIdx } = filteredIndexed[virtualRow.index];
-                                        const rowEmail = emailColKey ? row[emailColKey]?.trim().toLowerCase() : null;
-                                        const isCancelled = rowEmail ? cancelledEmails.has(rowEmail) : false;
+                                        const isCancelled = row._rid ? cancelledRids.has(row._rid) : false;
                                         return (
                                             <tr key={origIdx} style={{ opacity: isCancelled ? 0.5 : 1 }}>
                                                 <CheckTd onClick={(e) => e.stopPropagation()}>
@@ -1256,6 +1360,21 @@ export default function EventDetailPage() {
                                                         </td>
                                                     );
                                                 })}
+                                                <td style={{ whiteSpace: "nowrap" }} onClick={(e) => e.stopPropagation()}>
+                                                    {(() => {
+                                                        const isPaid = row._rid ? paidRids.has(row._rid) : false;
+                                                        return (
+                                                            <PaidBtn
+                                                                paid={isPaid}
+                                                                onClick={() => handlePaymentToggle(origIdx)}
+                                                                title={isPaid ? "입금 취소" : "입금 확인"}
+                                                                disabled={isCancelled}
+                                                            >
+                                                                {isPaid ? "입금 ✓" : "미입금"}
+                                                            </PaidBtn>
+                                                        );
+                                                    })()}
+                                                </td>
                                                 <td style={{ whiteSpace: "nowrap" }}>
                                                     <DeliveryBadge
                                                         info={emailColKey ? deliveryMap[row[emailColKey]?.trim()] : undefined}
@@ -1278,7 +1397,7 @@ export default function EventDetailPage() {
                                         const paddingBottom = rowVirtualizer.getTotalSize() - last.end;
                                         return paddingBottom > 0 ? (
                                             <tr style={{ height: `${paddingBottom}px` }}>
-                                                <td colSpan={displayColumns.length + 3} style={{ padding: 0, border: "none" }} />
+                                                <td colSpan={displayColumns.length + 4} style={{ padding: 0, border: "none" }} />
                                             </tr>
                                         ) : null;
                                     })()}
@@ -1288,6 +1407,15 @@ export default function EventDetailPage() {
                     </>
                 )}
             </Card>
+
+            {/* 행사 정보 수정 모달 */}
+            {editModalOpen && (
+                <EditEventModal
+                    event={event}
+                    onClose={() => setEditModalOpen(false)}
+                    onSaved={(updated) => setEvent((prev) => prev ? { ...prev, ...updated } : prev)}
+                />
+            )}
 
             {/* 이메일 발송 모달 */}
             {modalOpen && (

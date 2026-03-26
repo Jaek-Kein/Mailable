@@ -2,11 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
-import { decrypt, decryptJson } from "@/src/lib/crypto";
+import { encrypt, decrypt, decryptJson } from "@/src/lib/crypto";
 
 const patchSchema = z.object({
   emailSubject: z.string().optional(),
   emailContent: z.string().optional(),
+  title: z.string().min(1).optional(),
+  date: z.string().optional().nullable(),
+  place: z.string().optional().nullable(),
+  sheetUrl: z.string().url().optional().nullable().or(z.literal("")),
+  posterUrl: z.string().url().optional().nullable(),
+  status: z.enum(["ONGOING", "CLOSED"]).optional(),
 });
 
 export async function PATCH(
@@ -24,9 +30,25 @@ export async function PATCH(
     if (event.ownerId !== ownerId) return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
 
     const body = await req.json();
-    const data = patchSchema.parse(body);
-    const updated = await prisma.event.update({ where: { id }, data });
-    return NextResponse.json({ ok: true, event: updated });
+    const parsed = patchSchema.parse(body);
+
+    // sheetUrl은 저장 전 암호화
+    const dbData: Record<string, unknown> = { ...parsed };
+    if ("sheetUrl" in parsed) {
+      dbData.sheetUrl = parsed.sheetUrl ? encrypt(parsed.sheetUrl) : null;
+    }
+    // date가 빈 문자열이면 null 처리
+    if ("date" in parsed && parsed.date === "") {
+      dbData.date = null;
+    } else if ("date" in parsed && parsed.date) {
+      dbData.date = new Date(parsed.date);
+    }
+
+    const updated = await prisma.event.update({ where: { id }, data: dbData });
+    return NextResponse.json({
+      ok: true,
+      event: { ...updated, sheetUrl: updated.sheetUrl ? decrypt(updated.sheetUrl) : null },
+    });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: msg }, { status: 400 });
