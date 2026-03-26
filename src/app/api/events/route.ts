@@ -36,7 +36,7 @@ export async function GET() {
     const events = await prisma.event.findMany({
       where: { ownerId },
       include: { owner: true, data: true },
-      orderBy: { createdAt: 'desc' }
+      orderBy: [{ date: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }]
     });
 
     const decryptedEvents = events.map((e) => ({
