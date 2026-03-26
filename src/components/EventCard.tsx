@@ -91,6 +91,19 @@ const Dot = styled.span<{ tone?: "danger" | "success" | "warning" | "info" }>`
         theme.color.accent};
 `;
 
+const StatusBadge = styled.span<{ closed?: boolean }>`
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    background: ${({ theme, closed }) => closed ? theme.color.border : theme.color.accentLight};
+    color: ${({ theme, closed }) => closed ? theme.color.muted : theme.color.accent};
+`;
+
 const Toolbar = styled.div`
     position: absolute;
     top: 8px;
@@ -288,10 +301,15 @@ export default memo(function EventCard({
                     </Poster>
 
                     <Body>
-                        <Title>{title}</Title>
+                        <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <Title>{title}</Title>
+                            <StatusBadge closed={status === 'closed'}>
+                                <Dot tone={toneByStatus(status)} />
+                                {status === 'closed' ? '완료' : '진행 중'}
+                            </StatusBadge>
+                        </Row>
                         <Meta>
                             <Row>
-                                <Dot tone={toneByStatus(status)} />
                                 <span>{formatDate(date)}</span>
                             </Row>
                             {place && <div style={{ marginTop: '2px' }}>{place}</div>}

@@ -111,6 +111,47 @@ const EmptyState = styled.div`
     border-radius: ${({ theme }) => theme.radius.md};
 `;
 
+const TabRow = styled.div`
+    display: flex;
+    gap: 0.25rem;
+    border-bottom: 1px solid ${({ theme }) => theme.color.border};
+`;
+
+const Tab = styled.button<{ active: boolean }>`
+    appearance: none;
+    border: none;
+    background: none;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: ${({ active }) => (active ? 600 : 400)};
+    color: ${({ theme, active }) => (active ? theme.color.text : theme.color.muted)};
+    border-bottom: 2px solid ${({ theme, active }) => (active ? theme.color.accent : 'transparent')};
+    margin-bottom: -1px;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+
+    &:hover {
+        color: ${({ theme }) => theme.color.text};
+    }
+`;
+
+const TabCount = styled.span<{ active: boolean }>`
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.35rem;
+    margin-left: 0.35rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: ${({ theme, active }) => (active ? theme.color.accentLight : theme.color.border)};
+    color: ${({ theme, active }) => (active ? theme.color.accent : theme.color.muted)};
+`;
+
+type TabType = 'all' | 'ongoing' | 'closed';
+
 export default function Page() {
     const events = useEventStore((s) => s.events);
     const loading = useEventStore((s) => s.loading);
@@ -118,16 +159,24 @@ export default function Page() {
     const fetchEvents = useEventStore((s) => s.fetchEvents);
     const removeEvent = useEventStore((s) => s.removeEvent);
     const [showModal, setShowModal] = useState(false);
+    const [activeTab, setActiveTab] = useState<TabType>('all');
 
     useEffect(() => {
         fetchEvents();
     }, [fetchEvents]);
 
-    const ongoingEvents = events.filter(e => e.status !== 'CLOSED').length;
+    const ongoingEvents = events.filter(e => e.status !== 'CLOSED');
+    const closedEvents = events.filter(e => e.status === 'CLOSED');
     const totalParticipants = events.reduce(
         (sum, e) => sum + (e.data?.payload?.rows?.length ?? 0),
         0
     );
+
+    const filteredEvents = activeTab === 'ongoing'
+        ? ongoingEvents
+        : activeTab === 'closed'
+            ? closedEvents
+            : events;
 
     if (loading && events.length === 0) {
         return (
@@ -157,23 +206,47 @@ export default function Page() {
                 {error && <ErrorMessage>{error}</ErrorMessage>}
 
                 <Grid3 aria-label="핵심 지표">
-                    <StatCard label="진행 중 행사" value={ongoingEvents} />
+                    <StatCard label="진행 중 행사" value={ongoingEvents.length} />
                     <StatCard label="전체 행사" value={events.length} />
                     <StatCard label="총 참가자 수" value={totalParticipants} tone="success" />
                 </Grid3>
 
-                <SectionTitle>행사 목록</SectionTitle>
+                <div>
+                    <SectionTitle style={{ marginBottom: '0.75rem' }}>행사 목록</SectionTitle>
+                    <TabRow>
+                        <Tab active={activeTab === 'all'} onClick={() => setActiveTab('all')}>
+                            전체
+                            <TabCount active={activeTab === 'all'}>{events.length}</TabCount>
+                        </Tab>
+                        <Tab active={activeTab === 'ongoing'} onClick={() => setActiveTab('ongoing')}>
+                            진행 중
+                            <TabCount active={activeTab === 'ongoing'}>{ongoingEvents.length}</TabCount>
+                        </Tab>
+                        <Tab active={activeTab === 'closed'} onClick={() => setActiveTab('closed')}>
+                            완료
+                            <TabCount active={activeTab === 'closed'}>{closedEvents.length}</TabCount>
+                        </Tab>
+                    </TabRow>
+                </div>
 
                 <Grid3 aria-label="이벤트 카드">
-                    {events.length === 0 && !loading ? (
+                    {filteredEvents.length === 0 && !loading ? (
                         <EmptyState>
-                            등록된 행사가 없습니다.<br />
-                            <span style={{ fontSize: '0.8rem', marginTop: '0.25rem', display: 'block' }}>
-                                위의 행사 추가 버튼으로 첫 행사를 등록해 보세요.
-                            </span>
+                            {activeTab === 'all' ? (
+                                <>
+                                    등록된 행사가 없습니다.<br />
+                                    <span style={{ fontSize: '0.8rem', marginTop: '0.25rem', display: 'block' }}>
+                                        위의 행사 추가 버튼으로 첫 행사를 등록해 보세요.
+                                    </span>
+                                </>
+                            ) : activeTab === 'ongoing' ? (
+                                '진행 중인 행사가 없습니다.'
+                            ) : (
+                                '완료된 행사가 없습니다.'
+                            )}
                         </EmptyState>
                     ) : (
-                        events.map((ev) => (
+                        filteredEvents.map((ev) => (
                             <EventCard
                                 key={ev.id}
                                 title={ev.title}
@@ -181,6 +254,7 @@ export default function Page() {
                                 place={ev.place}
                                 sheetUrl={ev.sheetUrl}
                                 posterUrl={ev.posterUrl}
+                                status={ev.status === 'CLOSED' ? 'closed' : 'scheduled'}
                                 id={ev.id}
                                 onDelete={removeEvent}
                             />

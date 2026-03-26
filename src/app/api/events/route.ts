@@ -22,6 +22,17 @@ export async function GET() {
     const ownerId = session?.user?.id;
     if (!ownerId) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
 
+    // 날짜가 지난 ONGOING 행사를 CLOSED로 일괄 업데이트
+    const now = new Date();
+    await prisma.event.updateMany({
+      where: {
+        ownerId,
+        status: EventStatus.ONGOING,
+        date: { lt: now, not: null },
+      },
+      data: { status: EventStatus.CLOSED },
+    });
+
     const events = await prisma.event.findMany({
       where: { ownerId },
       include: { owner: true, data: true },
