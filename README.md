@@ -1,36 +1,61 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Mailable
 
-## Getting Started
+**행사 담당자를 위한 이메일 자동화 도구**
 
-First, run the development server:
+행사를 등록하고, Google Sheets 참가자 명단을 연결하면 — 클릭 몇 번으로 개인화된 이메일을 전체 발송할 수 있습니다.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+---
+
+## 이런 분들을 위한 서비스입니다
+
+- 세미나, 워크숍, 네트워킹 행사를 주기적으로 운영하는 담당자
+- 참가 신청을 Google Forms로 받고, 안내 메일을 일일이 보내고 있는 분
+- 발송했는지 안 했는지 헷갈려서 중복 발송하거나 누락하는 실수를 줄이고 싶은 분
+
+---
+
+## 핵심 기능
+
+### 행사 등록
+행사 이름, 날짜, 장소, 포스터를 등록합니다. Google Sheets URL을 연결해두면 참가자 명단이 자동으로 불러와집니다.
+
+### 참가자 명단 자동 수집
+Google Forms 응답 시트 URL만 붙여넣으면, 이메일·이름·신청 시간 정보를 자동으로 가져옵니다. 불필요한 개인정보(계좌번호 등)는 저장하지 않습니다.
+
+### 이메일 템플릿 편집
+행사별로 이메일 제목과 본문을 작성합니다. `{{이름}}`, `{{행사명}}` 같은 플레이스홀더를 쓰면 발송 시 각 참가자 정보로 자동 치환됩니다.
+
+```
+안녕하세요, {{이름}}님.
+{{행사명}} 참가 신청이 확인되었습니다.
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 선택 발송
+전체 참가자에게 한꺼번에 보내거나, 체크박스로 특정 인원만 선택해서 보낼 수 있습니다. 이미 발송된 참가자는 별도 표시되어 중복 발송을 방지합니다.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 참가자 상태 관리
+참가 취소, 현장 체크인, 입금 확인을 참가자별로 개별 관리할 수 있습니다. 취소된 참가자는 발송 대상에서 자동 제외됩니다.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## 사용 흐름
 
-To learn more about Next.js, take a look at the following resources:
+```
+1. Google 계정으로 로그인
+2. 행사 등록 (이름, 날짜, 장소, Google Sheets URL)
+3. 참가자 명단 불러오기 (자동)
+4. 이메일 템플릿 작성
+5. 발송 대상 선택 → 발송
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 시작하기
 
-## Deploy on Vercel
+> 개발 환경 설정 가이드는 [CLAUDE.md](CLAUDE.md)를 참고하세요.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 라이선스
+
+[LICENSE.txt](LICENSE.txt) 참조
