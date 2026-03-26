@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
             if (cancelledRids.includes(row._rid)) return false;
             // 레거시: 이메일이 취소 목록에 있으면 제외하고 _rid를 cancelledRids에 추가
             const emailKey = Object.keys(row).find((k) => EMAIL_KEYS.some((e) => k.toLowerCase() === e.toLowerCase()));
-            const emailVal = emailKey ? row[emailKey]?.toLowerCase().trim() : null;
+            const emailVal = emailKey ? (row as Record<string, string>)[emailKey]?.toLowerCase().trim() : null;
             if (emailVal && legacyCancelledSet.has(emailVal)) {
                 cancelledRids = [...cancelledRids, row._rid];
                 return false;
@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
             const legacyPaidSet = new Set(legacyPaidEmails.map((e) => e.toLowerCase()));
             for (const row of rowsWithRid) {
                 const emailKey = Object.keys(row).find((k) => EMAIL_KEYS.some((e) => k.toLowerCase() === e.toLowerCase()));
-                const emailVal = emailKey ? row[emailKey]?.toLowerCase().trim() : null;
+                const emailVal = emailKey ? (row as Record<string, string>)[emailKey]?.toLowerCase().trim() : null;
                 if (emailVal && legacyPaidSet.has(emailVal) && !paidRids.includes(row._rid)) {
                     paidRids = [...paidRids, row._rid];
                 }
