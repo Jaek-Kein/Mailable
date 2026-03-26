@@ -12,12 +12,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ camp
   const { campaignId } = await params;
   const email = req.nextUrl.searchParams.get("e");
 
-  if (email) {
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (email && EMAIL_RE.test(email)) {
     // 최초 오픈만 기록
-    await prisma.emailDelivery.updateMany({
-      where: { campaignId, recipientEmail: email, openedAt: null },
-      data: { openedAt: new Date(), status: "OPENED" },
-    });
+    try {
+      await prisma.emailDelivery.updateMany({
+        where: { campaignId, recipientEmail: email, openedAt: null },
+        data: { openedAt: new Date(), status: "OPENED" },
+      });
+    } catch (e) {
+      console.error("[track/open] DB 업데이트 실패:", e);
+    }
   }
 
   return new NextResponse(PIXEL, {

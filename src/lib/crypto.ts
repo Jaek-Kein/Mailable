@@ -33,7 +33,12 @@ export function encryptJson(value: unknown): string {
  * 암호화되지 않은 레거시 JSON 문자열도 처리합니다.
  */
 export function decryptJson<T>(value: string): T {
-  return JSON.parse(decrypt(value)) as T;
+  try {
+    return JSON.parse(decrypt(value)) as T;
+  } catch (e) {
+    console.error("[crypto] decryptJson 실패 — 값 길이:", value?.length, e instanceof Error ? e.message : e);
+    throw e;
+  }
 }
 
 /**

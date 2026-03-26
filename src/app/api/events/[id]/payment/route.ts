@@ -48,12 +48,12 @@ export async function POST(
   const eventData = await prisma.eventData.findUnique({ where: { eventId: id } });
   if (!eventData) return NextResponse.json({ ok: false, error: "데이터 없음" }, { status: 404 });
 
-  const payload = decryptJson<{
-    rows: Record<string, string>[];
-    cancelledRids?: string[];
-    checkinMap?: Record<string, string | null>;
-    paidRids?: string[];
-  }>(eventData.payload);
+  let payload: { rows: Record<string, string>[]; cancelledRids?: string[]; checkinMap?: Record<string, string | null>; paidRids?: string[] };
+  try {
+    payload = decryptJson<typeof payload>(eventData.payload);
+  } catch {
+    return NextResponse.json({ ok: false, error: "데이터 복호화에 실패했습니다." }, { status: 500 });
+  }
 
   let paidRids: string[] = Array.isArray(payload?.paidRids) ? payload.paidRids : [];
 

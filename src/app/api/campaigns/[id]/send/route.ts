@@ -24,6 +24,7 @@ function findNameKey(row: Record<string, string>): string | null {
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
   const session = await auth();
   const userId = session?.user?.id;
   if (!userId) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
@@ -68,48 +69,54 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const errors: { email: string; reason: string }[] = [];
 
   for (const row of rows) {
-    const emailKey = findEmailKey(row);
-    if (!emailKey) {
+    try {
+      const emailKey = findEmailKey(row);
+      if (!emailKey) {
+        failCount++;
+        errors.push({ email: "(unknown)", reason: "이메일 컬럼을 찾을 수 없습니다. 컬럼명이 'email' 또는 '이메일'인지 확인하세요." });
+        continue;
+      }
+      const recipientEmail = row[emailKey]?.trim();
+      if (!recipientEmail || !recipientEmail.includes("@")) {
+        failCount++;
+        errors.push({ email: recipientEmail ?? "(비어있음)", reason: "유효하지 않은 이메일 주소입니다." });
+        continue;
+      }
+
+      const nameKey = findNameKey(row);
+      const recipientName = nameKey ? row[nameKey]?.trim() : undefined;
+
+      // 플레이스홀더 치환: 행 데이터 + 행사 제목
+      const context = { ...row, 행사명: campaign.event.title };
+      const subject = renderTemplate(emailSubject, context);
+      const content = renderTemplate(emailContent, context);
+
+      // DB에 배달 레코드 생성
+      const delivery = await prisma.emailDelivery.create({
+        data: { campaignId: id, recipientEmail, recipientName, status: "PENDING" },
+      });
+
+      const result = await sendGmail({ userId, to: recipientEmail, subject, content });
+
+      const newStatus: DeliveryStatus = result.ok ? "SENT" : "FAILED";
+      await prisma.emailDelivery.update({
+        where: { id: delivery.id },
+        data: {
+          status: newStatus,
+          sentAt: result.ok ? new Date() : null,
+          errorMessage: result.error ?? null,
+        },
+      });
+
+      if (result.ok) sentCount++;
+      else {
+        failCount++;
+        errors.push({ email: recipientEmail, reason: result.error ?? "알 수 없는 오류" });
+      }
+    } catch (e: unknown) {
       failCount++;
-      errors.push({ email: "(unknown)", reason: "이메일 컬럼을 찾을 수 없습니다. 컬럼명이 'email' 또는 '이메일'인지 확인하세요." });
-      continue;
-    }
-    const recipientEmail = row[emailKey]?.trim();
-    if (!recipientEmail || !recipientEmail.includes("@")) {
-      failCount++;
-      errors.push({ email: recipientEmail ?? "(비어있음)", reason: "유효하지 않은 이메일 주소입니다." });
-      continue;
-    }
-
-    const nameKey = findNameKey(row);
-    const recipientName = nameKey ? row[nameKey]?.trim() : undefined;
-
-    // 플레이스홀더 치환: 행 데이터 + 행사 제목
-    const context = { ...row, 행사명: campaign.event.title };
-    const subject = renderTemplate(emailSubject, context);
-    const content = renderTemplate(emailContent, context);
-
-    // DB에 배달 레코드 생성
-    const delivery = await prisma.emailDelivery.create({
-      data: { campaignId: id, recipientEmail, recipientName, status: "PENDING" },
-    });
-
-    const result = await sendGmail({ userId, to: recipientEmail, subject, content });
-
-    const newStatus: DeliveryStatus = result.ok ? "SENT" : "FAILED";
-    await prisma.emailDelivery.update({
-      where: { id: delivery.id },
-      data: {
-        status: newStatus,
-        sentAt: result.ok ? new Date() : null,
-        errorMessage: result.error ?? null,
-      },
-    });
-
-    if (result.ok) sentCount++;
-    else {
-      failCount++;
-      errors.push({ email: recipientEmail, reason: result.error ?? "알 수 없는 오류" });
+      errors.push({ email: "(처리 오류)", reason: "처리 중 오류가 발생했습니다." });
+      console.error("[campaigns/send] 단건 처리 예외:", e);
     }
   }
 
@@ -117,4 +124,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   await prisma.emailCampaign.update({ where: { id }, data: { status: finalStatus } });
 
   return NextResponse.json({ ok: true, sentCount, failCount, total: rows.length, errors });
+  } catch (e: unknown) {
+    console.error("[campaigns/send] 예기치 않은 오류:", e);
+    return NextResponse.json({ ok: false, error: "이메일 발송 처리 중 오류가 발생했습니다." }, { status: 500 });
+  }
 }

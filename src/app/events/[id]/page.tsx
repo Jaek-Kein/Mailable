@@ -405,6 +405,33 @@ const CheckinTime = styled.span`
     flex-shrink: 0;
 `;
 
+/* ────────── 초성 검색 ────────── */
+const CHOSUNG = ["ㄱ","ㄲ","ㄴ","ㄷ","ㄸ","ㄹ","ㅁ","ㅂ","ㅃ","ㅅ","ㅆ","ㅇ","ㅈ","ㅉ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"];
+
+function getChosung(str: string): string {
+    return str.split("").map((ch) => {
+        const code = ch.charCodeAt(0) - 0xAC00;
+        if (code < 0 || code > 11171) return ch;
+        return CHOSUNG[Math.floor(code / 588)];
+    }).join("");
+}
+
+function isChosungOnly(str: string): boolean {
+    return /^[ㄱ-ㅎ]+$/.test(str);
+}
+
+function matchesSearch(target: string, query: string): boolean {
+    if (!target || !query) return false;
+    const t = target.toLowerCase();
+    const q = query.toLowerCase();
+    if (t.includes(q)) return true;
+    // 초성 검색: 쿼리가 초성으로만 이루어진 경우
+    if (isChosungOnly(q)) {
+        return getChosung(t).includes(q);
+    }
+    return false;
+}
+
 /* ────────── Column detection ────────── */
 const EMAIL_KEYS = ["email", "이메일", "연락처", "e-mail", "mail"];
 const NAME_KEYS = ["name", "이름", "입금자명", "닉네임", "성명", "참가자명"];
@@ -448,7 +475,8 @@ function exportCsv(rows: Record<string, string>[], filename: string) {
     a.href = url;
     a.download = filename;
     a.click();
-    URL.revokeObjectURL(url);
+    // 브라우저가 다운로드를 시작한 뒤 URL 해제 (즉시 해제 시 일부 브라우저에서 다운로드 실패)
+    setTimeout(() => URL.revokeObjectURL(url), 100);
 }
 
 /* ────────── Delivery status badge ────────── */
@@ -572,10 +600,11 @@ interface AttendanceTabProps {
     emailColKey: string | null;
     nameColKey: string | null;
     initialCheckinMap: Record<string, string | null>;
+    paidRids: Set<string>;
     onCheckinMapChange?: (map: Record<string, string | null>) => void;
 }
 
-const AttendanceTab = memo(function AttendanceTab({ eventId, rows, emailColKey, nameColKey, initialCheckinMap, onCheckinMapChange }: AttendanceTabProps) {
+const AttendanceTab = memo(function AttendanceTab({ eventId, rows, emailColKey, nameColKey, initialCheckinMap, paidRids, onCheckinMapChange }: AttendanceTabProps) {
     const [checkinMap, setCheckinMap] = useState<Record<string, string | null>>(initialCheckinMap);
 
     useEffect(() => {
@@ -586,31 +615,40 @@ const AttendanceTab = memo(function AttendanceTab({ eventId, rows, emailColKey, 
     const [filter, setFilter] = useState("");
     const [resetting, setResetting] = useState(false);
 
-    const filtered = useMemo(() => {
-        if (!filter.trim()) return rows.map((r, i) => ({ row: r, i }));
-        const q = filter.toLowerCase();
-        return rows
-            .map((r, i) => ({ row: r, i }))
-            .filter(({ row }) => {
-                const name = nameColKey ? row[nameColKey] : "";
-                const email = emailColKey ? row[emailColKey] : "";
-                return (name ?? "").toLowerCase().includes(q) || (email ?? "").toLowerCase().includes(q);
-            });
-    }, [rows, filter, emailColKey, nameColKey]);
+    // 입금자만 표시
+    const paidFilteredRows = useMemo(
+        () => rows.map((r, i) => ({ row: r, i })).filter(({ row }) => row._rid && paidRids.has(row._rid)),
+        [rows, paidRids]
+    );
 
+    const filtered = useMemo(() => {
+        if (!filter.trim()) return paidFilteredRows;
+        const q = filter.trim();
+        return paidFilteredRows.filter(({ row }) => {
+            const name = nameColKey ? (row[nameColKey] ?? "") : "";
+            const email = emailColKey ? (row[emailColKey] ?? "") : "";
+            return matchesSearch(name, q) || matchesSearch(email, q);
+        });
+    }, [paidFilteredRows, filter, emailColKey, nameColKey]);
+
+    const paidCount = useMemo(
+        () => rows.filter((r) => r._rid && paidRids.has(r._rid)).length,
+        [rows, paidRids]
+    );
+
+    // 입금자 중 체크인된 수
     const checkedInCount = useMemo(
-        () => Object.values(checkinMap).filter(Boolean).length,
-        [checkinMap]
+        () => rows.filter((r) => r._rid && paidRids.has(r._rid) && checkinMap[r._rid]).length,
+        [checkinMap, rows, paidRids]
     );
 
     async function toggleCheckin(rowId: string, current: boolean) {
         const next = !current;
         // 낙관적 업데이트
-        setCheckinMap((prev) => {
-            const updated = { ...prev, [rowId]: next ? new Date().toISOString() : null };
-            onCheckinMapChange?.(updated);
-            return updated;
-        });
+        const updated = { ...checkinMap, [rowId]: next ? new Date().toISOString() : null };
+        setCheckinMap(updated);
+        onCheckinMapChange?.(updated);
+
         const res = await fetch(`/api/events/${eventId}/checkin`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -619,11 +657,9 @@ const AttendanceTab = memo(function AttendanceTab({ eventId, rows, emailColKey, 
         const data = await res.json();
         if (!data.ok) {
             // 실패 시 롤백
-            setCheckinMap((prev) => {
-                const rolled = { ...prev, [rowId]: current ? new Date().toISOString() : null };
-                onCheckinMapChange?.(rolled);
-                return rolled;
-            });
+            const rolled = { ...checkinMap, [rowId]: current ? new Date().toISOString() : null };
+            setCheckinMap(rolled);
+            onCheckinMapChange?.(rolled);
         }
     }
 
@@ -648,7 +684,7 @@ const AttendanceTab = memo(function AttendanceTab({ eventId, rows, emailColKey, 
                     ✓ 입장 완료 {checkedInCount}명
                 </StatChip>
                 <StatChip variant="muted">
-                    미입장 {rows.length - checkedInCount}명
+                    미입장 {paidCount - checkedInCount}명
                 </StatChip>
                 <StatChip>
                     전체 {rows.length}명
@@ -660,7 +696,7 @@ const AttendanceTab = memo(function AttendanceTab({ eventId, rows, emailColKey, 
                 <div
                     style={{
                         height: "100%",
-                        width: `${rows.length > 0 ? (checkedInCount / rows.length) * 100 : 0}%`,
+                        width: `${paidCount > 0 ? (checkedInCount / paidCount) * 100 : 0}%`,
                         background: "#16a34a",
                         borderRadius: "999px",
                         transition: "width 0.3s ease",
@@ -879,10 +915,13 @@ export default function EventDetailPage() {
     const [cancelledRids, setCancelledRids] = useState<Set<string>>(new Set());
     const [showCancelled, setShowCancelled] = useState(false);
     const [paidRids, setPaidRids] = useState<Set<string>>(new Set());
+    const [pendingRowIds, setPendingRowIds] = useState<Set<string>>(new Set());
 
 
     useEffect(() => {
-        fetch(`/api/events/${id}`)
+        const controller = new AbortController();
+
+        fetch(`/api/events/${id}`, { signal: controller.signal })
             .then((r) => r.json())
             .then((data) => {
                 if (!data.ok) throw new Error(data.error ?? "행사를 불러오지 못했습니다.");
@@ -917,8 +956,13 @@ export default function EventDetailPage() {
                 );
                 setCheckedIndices(defaultSelected);
             })
-            .catch((e) => setError(e.message))
+            .catch((e) => {
+                if (e.name === "AbortError") return;
+                setError(e.message);
+            })
             .finally(() => setLoading(false));
+
+        return () => controller.abort();
     }, [id]);
 
     const allColumns = useMemo(() => localRows.length > 0 ? Object.keys(localRows[0]) : [], [localRows]);
@@ -945,10 +989,11 @@ export default function EventDetailPage() {
     });
 
     const handleSend = useCallback(async () => {
+        const idempotencyKey = crypto.randomUUID();
         const res = await fetch(`/api/events/${id}/send`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ rowIndices: Array.from(checkedIndices) }),
+            body: JSON.stringify({ rowIndices: Array.from(checkedIndices), idempotencyKey }),
         });
         const data = await res.json();
         if (!data.ok) throw new Error(data.error ?? "이메일 발송에 실패했습니다.");
@@ -1020,7 +1065,7 @@ export default function EventDetailPage() {
 
     async function handlePaymentToggle(origIdx: number) {
         const rowId = localRows[origIdx]?._rid;
-        if (!rowId) return;
+        if (!rowId || pendingRowIds.has(rowId)) return;
         const isPaid = paidRids.has(rowId);
         const next = !isPaid;
 
@@ -1030,20 +1075,25 @@ export default function EventDetailPage() {
             next ? s.add(rowId) : s.delete(rowId);
             return s;
         });
+        setPendingRowIds((prev) => new Set(prev).add(rowId));
 
-        const res = await fetch(`/api/events/${id}/payment`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ rowId, paid: next }),
-        });
-        const data = await res.json();
-        if (!data.ok) {
-            // 실패 시 롤백
-            setPaidRids((prev) => {
-                const s = new Set(prev);
-                isPaid ? s.add(rowId) : s.delete(rowId);
-                return s;
+        try {
+            const res = await fetch(`/api/events/${id}/payment`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ rowId, paid: next }),
             });
+            const data = await res.json();
+            if (!data.ok) {
+                // 실패 시 롤백
+                setPaidRids((prev) => {
+                    const s = new Set(prev);
+                    isPaid ? s.add(rowId) : s.delete(rowId);
+                    return s;
+                });
+            }
+        } finally {
+            setPendingRowIds((prev) => { const s = new Set(prev); s.delete(rowId); return s; });
         }
     }
 
@@ -1080,7 +1130,7 @@ export default function EventDetailPage() {
 
     async function handleCancelToggle(origIdx: number) {
         const rowId = localRows[origIdx]?._rid;
-        if (!rowId) return;
+        if (!rowId || pendingRowIds.has(rowId)) return;
         const isCancelled = cancelledRids.has(rowId);
         const next = !isCancelled;
 
@@ -1092,20 +1142,25 @@ export default function EventDetailPage() {
         });
         // 취소 시 체크 해제
         if (next) setCheckedIndices((prev) => { const s = new Set(prev); s.delete(origIdx); return s; });
+        setPendingRowIds((prev) => new Set(prev).add(rowId));
 
-        const res = await fetch(`/api/events/${id}/cancel`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ rowId, cancelled: next }),
-        });
-        const data = await res.json();
-        if (!data.ok) {
-            // 실패 시 롤백
-            setCancelledRids((prev) => {
-                const s = new Set(prev);
-                isCancelled ? s.add(rowId) : s.delete(rowId);
-                return s;
+        try {
+            const res = await fetch(`/api/events/${id}/cancel`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ rowId, cancelled: next }),
             });
+            const data = await res.json();
+            if (!data.ok) {
+                // 실패 시 롤백
+                setCancelledRids((prev) => {
+                    const s = new Set(prev);
+                    isCancelled ? s.add(rowId) : s.delete(rowId);
+                    return s;
+                });
+            }
+        } finally {
+            setPendingRowIds((prev) => { const s = new Set(prev); s.delete(rowId); return s; });
         }
     }
 
@@ -1239,6 +1294,7 @@ export default function EventDetailPage() {
                         emailColKey={emailColKey}
                         nameColKey={nameColKey}
                         initialCheckinMap={checkinMap}
+                        paidRids={paidRids}
                         onCheckinMapChange={setCheckinMap}
                     />
                 ) : rows.length === 0 ? (

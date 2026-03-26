@@ -18,5 +18,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/api/events/:path*"],
+  matcher: ["/dashboard/:path*", "/api/events/:path*", "/api/sheets/:path*"],
 };

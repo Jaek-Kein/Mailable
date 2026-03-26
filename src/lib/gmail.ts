@@ -49,10 +49,13 @@ export async function sendGmail(opts: SendMailOptions): Promise<SendResult> {
 
   const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
+  // 헤더 인젝션 방지: subject의 줄바꿈 문자 제거
+  const safeSubject = subject.replace(/[\r\n]/g, " ");
+
   // RFC 2822 plain text 메시지 작성
   const message = [
     `To: ${to}`,
-    `Subject: =?UTF-8?B?${Buffer.from(subject).toString("base64")}?=`,
+    `Subject: =?UTF-8?B?${Buffer.from(safeSubject).toString("base64")}?=`,
     "MIME-Version: 1.0",
     "Content-Type: text/plain; charset=UTF-8",
     "Content-Transfer-Encoding: base64",
@@ -72,14 +75,17 @@ export async function sendGmail(opts: SendMailOptions): Promise<SendResult> {
       requestBody: { raw: encodedMessage },
     });
 
-    // 갱신된 access_token 저장 (암호화 후 저장)
-    const newTokens = (await oauth2Client.getAccessToken()).token;
-    const currentDecrypted = account.access_token ? decrypt(account.access_token) : null;
-    if (newTokens && newTokens !== currentDecrypted) {
-      await prisma.account.update({
-        where: { id: account.id },
-        data: { access_token: encrypt(newTokens) },
-      });
+    // 갱신된 access_token 저장 — 실패해도 발송 결과에 영향 없음
+    try {
+      const newToken = (await oauth2Client.getAccessToken()).token;
+      if (newToken) {
+        await prisma.account.updateMany({
+          where: { id: account.id, access_token: account.access_token ?? null },
+          data: { access_token: encrypt(newToken) },
+        });
+      }
+    } catch (e) {
+      console.error("[gmail] access_token 갱신 실패 (발송은 성공):", e);
     }
 
     return { ok: true, messageId: res.data.id ?? undefined };

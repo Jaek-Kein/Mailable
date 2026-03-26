@@ -20,15 +20,20 @@ async function getOwnedCampaign(id: string, userId: string) {
 }
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
-  const userId = session?.user?.id;
-  if (!userId) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  try {
+    const session = await auth();
+    const userId = session?.user?.id;
+    if (!userId) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
 
-  const { id } = await params;
-  const campaign = await getOwnedCampaign(id, userId);
-  if (!campaign) return NextResponse.json({ ok: false, error: "not found" }, { status: 404 });
+    const { id } = await params;
+    const campaign = await getOwnedCampaign(id, userId);
+    if (!campaign) return NextResponse.json({ ok: false, error: "not found" }, { status: 404 });
 
-  return NextResponse.json({ ok: true, campaign });
+    return NextResponse.json({ ok: true, campaign });
+  } catch (e: unknown) {
+    console.error("[campaigns/GET]:", e);
+    return NextResponse.json({ ok: false, error: "캠페인 조회 중 오류가 발생했습니다." }, { status: 500 });
+  }
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -73,6 +78,11 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ ok: false, error: "발송 중인 캠페인은 삭제할 수 없습니다." }, { status: 409 });
   }
 
-  await prisma.emailCampaign.delete({ where: { id } });
-  return NextResponse.json({ ok: true });
+  try {
+    await prisma.emailCampaign.delete({ where: { id } });
+    return NextResponse.json({ ok: true });
+  } catch (e: unknown) {
+    console.error("[campaigns/DELETE]:", e);
+    return NextResponse.json({ ok: false, error: "캠페인 삭제 중 오류가 발생했습니다." }, { status: 500 });
+  }
 }

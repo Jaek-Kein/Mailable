@@ -6,7 +6,8 @@ import { fetchCsv } from "@/src/lib/gsheets/fetchCsv";
 import { csvToJson } from "@/src/lib/gsheets/csvToJson";
 import { prisma } from "@/src/lib/prisma";
 import { encryptJson, decryptJson } from "@/src/lib/crypto";
-import { EMAIL_KEYS, TS_KEYS, ALLOWED_KEYS } from "@/src/lib/columnDetection";
+import { EMAIL_KEYS, TS_KEYS, ALLOWED_KEYS, PAID_KEYS, isTrueValue } from "@/src/lib/columnDetection";
+import { auth } from "@/src/lib/auth";
 
 const schema = z.object({
     eventId: z.string().min(1),
@@ -16,7 +17,18 @@ const schema = z.object({
 export async function POST(req: NextRequest) {
 
     try {
-        const body = await req.json();
+        const session = await auth();
+        const userId = session?.user?.id;
+        if (!userId) {
+            return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+        }
+
+        let body: unknown;
+        try {
+            body = await req.json();
+        } catch {
+            return NextResponse.json({ ok: false, error: "요청 본문이 올바른 JSON 형식이 아닙니다." }, { status: 400 });
+        }
         const parsed = schema.safeParse(body);
         if (!parsed.success) {
             return NextResponse.json(
@@ -26,6 +38,12 @@ export async function POST(req: NextRequest) {
         }
         const { eventId, sheetUrl } = parsed.data;
 
+        // 행사 소유권 검증
+        const event = await prisma.event.findFirst({ where: { id: eventId, ownerId: userId } });
+        if (!event) {
+            return NextResponse.json({ ok: false, error: "행사를 찾을 수 없거나 접근 권한이 없습니다." }, { status: 404 });
+        }
+
         const { spreadsheetId, gid, isExportCsv } = parseSheetUrl(sheetUrl);
         if (!spreadsheetId)
             return NextResponse.json(
@@ -33,9 +51,28 @@ export async function POST(req: NextRequest) {
                 { status: 400 }
             );
 
-        const csvText = isExportCsv
-            ? await (await fetch(sheetUrl, { cache: "no-store" })).text()
-            : await fetchCsv({ spreadsheetId, gid });
+        // SSRF 방어: Google Sheets 도메인만 허용
+        const ALLOWED_SHEET_HOSTS = ["docs.google.com", "sheets.googleapis.com"];
+        if (isExportCsv) {
+            const parsedUrl = new URL(sheetUrl);
+            if (!ALLOWED_SHEET_HOSTS.includes(parsedUrl.hostname)) {
+                return NextResponse.json({ ok: false, error: "허용되지 않은 URL입니다." }, { status: 400 });
+            }
+        }
+
+        let csvText: string;
+        try {
+            if (isExportCsv) {
+                const csvRes = await fetch(sheetUrl, { cache: "no-store" });
+                if (!csvRes.ok) throw new Error(`HTTP ${csvRes.status}`);
+                csvText = await csvRes.text();
+            } else {
+                csvText = await fetchCsv({ spreadsheetId, gid });
+            }
+        } catch (e: unknown) {
+            const reason = e instanceof Error ? e.message : String(e);
+            return NextResponse.json({ ok: false, error: `Google Sheets 데이터를 가져오지 못했습니다: ${reason}` }, { status: 502 });
+        }
 
         const allRows = csvToJson(csvText);
 
@@ -128,6 +165,20 @@ export async function POST(req: NextRequest) {
 
         // checkinMap 레거시 마이그레이션은 하지 않음 (체크인은 당일 이벤트용이라 재수집 시 리셋이 자연스러움)
 
+        // 입금 체크박스 컬럼이 있으면 paidRids에 자동 반영
+        for (const row of rows) {
+            const paidKey = Object.keys(row).find((k) => PAID_KEYS.some((p) => k.toLowerCase() === p.toLowerCase()));
+            if (paidKey && row._rid) {
+                const val = (row as Record<string, string>)[paidKey] ?? "";
+                if (isTrueValue(val)) {
+                    if (!paidRids.includes(row._rid)) paidRids = [...paidRids, row._rid];
+                } else {
+                    // Sheets에서 명시적으로 false 표시된 경우 paidRids에서 제거
+                    paidRids = paidRids.filter((r) => r !== row._rid);
+                }
+            }
+        }
+
         const encryptedPayload = encryptJson({ rows, cancelledRids, checkinMap, paidRids });
 
         const saved = await prisma.eventData.upsert({
@@ -148,15 +199,7 @@ export async function POST(req: NextRequest) {
             data: rows,
         });
     } catch (e: unknown) {
-        if (e instanceof Error) {
-            return NextResponse.json(
-                { ok: false, error: e.message },
-                { status: 500 }
-            );
-        }
-        return NextResponse.json(
-            { ok: false, error: String(e) },
-            { status: 500 }
-        );
+        console.error("[sheets/ingest] 예기치 않은 오류:", e);
+        return NextResponse.json({ ok: false, error: "데이터 수집 중 오류가 발생했습니다." }, { status: 500 });
     }
 }

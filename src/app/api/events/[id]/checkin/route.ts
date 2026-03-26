@@ -45,7 +45,12 @@ export async function POST(
   const eventData = await prisma.eventData.findUnique({ where: { eventId: id } });
   if (!eventData) return NextResponse.json({ ok: false, error: "데이터 없음" }, { status: 404 });
 
-  const payload = decryptJson<{ rows: Record<string, string>[]; checkinMap?: Record<string, string | null> }>(eventData.payload);
+  let payload: { rows: Record<string, string>[]; checkinMap?: Record<string, string | null> };
+  try {
+    payload = decryptJson<typeof payload>(eventData.payload);
+  } catch {
+    return NextResponse.json({ ok: false, error: "데이터 복호화에 실패했습니다." }, { status: 500 });
+  }
   const checkinMap: Record<string, string | null> = payload.checkinMap ?? {};
 
   if (checkedIn) {
@@ -82,7 +87,12 @@ export async function DELETE(
   const eventData = await prisma.eventData.findUnique({ where: { eventId: id } });
   if (!eventData) return NextResponse.json({ ok: false, error: "데이터 없음" }, { status: 404 });
 
-  const payload = decryptJson<{ rows: Record<string, string>[]; checkinMap?: Record<string, string | null> }>(eventData.payload);
+  let payload: { rows: Record<string, string>[]; checkinMap?: Record<string, string | null> };
+  try {
+    payload = decryptJson<typeof payload>(eventData.payload);
+  } catch {
+    return NextResponse.json({ ok: false, error: "데이터 복호화에 실패했습니다." }, { status: 500 });
+  }
   await prisma.eventData.update({
     where: { eventId: id },
     data: { payload: encryptJson({ ...payload, checkinMap: {} }) },

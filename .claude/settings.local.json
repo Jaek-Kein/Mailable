@@ -20,7 +20,11 @@
       "Bash(node -e \"console.log\\(require\\(''crypto''\\).randomBytes\\(32\\).toString\\(''hex''\\)\\)\")",
       "Bash(grep -r \"hardcoded\\\\|magic\\\\|FIXME\\\\|TODO\" /z/programming/event-auto-mailing/mailable/src --include=*.ts --include=*.tsx)",
       "Bash(grep -n \"NEXTAUTH_URL\" z:/programming/event-auto-mailing/mailable/.env*)",
-      "Bash(netstat -ano)"
+      "Bash(netstat -ano)",
+      "Bash(git remote:*)",
+      "Bash(git show:*)",
+      "Bash(curl -s \"https://docs.google.com/spreadsheets/d/1oFT9YuoQDwEB8dODAbnZI9w9QLyRVMfxXzACB8S9FT8/export?format=csv&gid=0\")",
+      "Bash(curl -L -s \"https://docs.google.com/spreadsheets/d/1oFT9YuoQDwEB8dODAbnZI9w9QLyRVMfxXzACB8S9FT8/export?format=csv&gid=0\")"
     ],
     "additionalDirectories": [
       "z:\\programming\\event-auto-mailing\\mailable\\src\\app\\api\\events\\[id]"

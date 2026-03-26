@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { create } from "zustand";
 
 export type Row = Record<string, string>; // CSV 헤더 기반의 key-value
@@ -14,7 +13,7 @@ type SheetActions = {
     ingestFromSheetUrl: (
         url: string,
         eventId: string
-    ) => Promise<NextResponse<{ ok: boolean; error: string }> | undefined>;
+    ) => Promise<{ ok: false; error: string } | undefined>;
     clear: () => void;
 };
 
@@ -36,16 +35,9 @@ export const useSheetStore = create<SheetState & SheetActions>((set) => ({
                 rows: json.data,
             });
         } catch (e: unknown) {
-            if (e instanceof Error) {
-                return NextResponse.json(
-                    { ok: false, error: e.message },
-                    { status: 500 }
-                );
-            }
-            return NextResponse.json(
-                { ok: false, error: String(e) },
-                { status: 500 }
-            );
+            const message = e instanceof Error ? e.message : String(e);
+            set({ error: message });
+            return { ok: false as const, error: message };
         } finally {
             set({ loading: false });
         }
