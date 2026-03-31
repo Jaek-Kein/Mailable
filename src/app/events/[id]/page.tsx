@@ -608,6 +608,8 @@ interface AttendanceTabProps {
 const AttendanceTab = memo(function AttendanceTab({ eventId, rows, emailColKey, nameColKey, checkinMap, paidRids, onCheckinMapChange }: AttendanceTabProps) {
     const [filter, setFilter] = useState("");
     const [resetting, setResetting] = useState(false);
+    // 직렬 큐: 동시 체크인 요청이 순서대로 처리되도록 (서버 write 레이스 방지)
+    const checkinQueueRef = useRef<Promise<void>>(Promise.resolve());
 
     // 입금자만 표시
     const paidFilteredRows = useMemo(
@@ -636,23 +638,24 @@ const AttendanceTab = memo(function AttendanceTab({ eventId, rows, emailColKey, 
         [checkinMap, rows, paidRids]
     );
 
-    async function toggleCheckin(rowId: string, current: boolean) {
+    function toggleCheckin(rowId: string, current: boolean) {
         const next = !current;
         // 낙관적 업데이트
-        const updated = { ...checkinMap, [rowId]: next ? new Date().toISOString() : null };
-        onCheckinMapChange(updated);
+        onCheckinMapChange({ ...checkinMap, [rowId]: next ? new Date().toISOString() : null });
 
-        const res = await fetch(`/api/events/${eventId}/checkin`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ rowId, checkedIn: next }),
+        // 직렬 큐에 추가: 이전 요청이 완료된 후 순차 실행 (서버 write 레이스 방지)
+        checkinQueueRef.current = checkinQueueRef.current.then(async () => {
+            const res = await fetch(`/api/events/${eventId}/checkin`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ rowId, checkedIn: next }),
+            });
+            const data = await res.json();
+            if (!data.ok) {
+                // 실패 시 롤백
+                onCheckinMapChange({ ...checkinMap, [rowId]: current ? new Date().toISOString() : null });
+            }
         });
-        const data = await res.json();
-        if (!data.ok) {
-            // 실패 시 롤백
-            const rolled = { ...checkinMap, [rowId]: current ? new Date().toISOString() : null };
-            onCheckinMapChange(rolled);
-        }
     }
 
     async function resetAll() {

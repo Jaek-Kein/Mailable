@@ -29,7 +29,11 @@
       "Bash(grep -n \"const filteredIndexed\\\\|const isBlocked\\\\|const isVisible\" src/app/events/[id]/page.tsx)",
       "Bash(grep -n \"handleCancelToggle\\\\|handleCheckinToggle\" src/app/events/[id]/page.tsx)",
       "Bash(grep -n \"CheckTh\\\\|CheckTd\\\\|PaidBtn\\\\|CancelBtn\" src/app/events/[id]/page.tsx)",
-      "Bash(xargs grep:*)"
+      "Bash(xargs grep:*)",
+      "Bash(grep -n \"toggleCheckin\\\\|resetAll\\\\|CheckinRow\\\\|AttendanceTab\" /z/programming/event-auto-mailing/mailable/src/app/events/[id]/page.tsx)",
+      "Bash(grep -n \"CheckinStats\\\\|StatChip\" /z/programming/event-auto-mailing/mailable/src/app/events/[id]/page.tsx)",
+      "Bash(grep -A 5 \"function EventPage\\\\|export default\" /z/programming/event-auto-mailing/mailable/src/app/events/[id]/page.tsx)",
+      "Bash(grep -n \"pendingRowIds\\\\|idempotency\" /z/programming/event-auto-mailing/mailable/src/app/events/[id]/page.tsx)"
     ],
     "additionalDirectories": [
       "z:\\programming\\event-auto-mailing\\mailable\\src\\app\\api\\events\\[id]",
