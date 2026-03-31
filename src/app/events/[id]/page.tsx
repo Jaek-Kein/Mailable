@@ -600,19 +600,12 @@ interface AttendanceTabProps {
     rows: Record<string, string>[];
     emailColKey: string | null;
     nameColKey: string | null;
-    initialCheckinMap: Record<string, string | null>;
+    checkinMap: Record<string, string | null>;
     paidRids: Set<string>;
-    onCheckinMapChange?: (map: Record<string, string | null>) => void;
+    onCheckinMapChange: (map: Record<string, string | null>) => void;
 }
 
-const AttendanceTab = memo(function AttendanceTab({ eventId, rows, emailColKey, nameColKey, initialCheckinMap, paidRids, onCheckinMapChange }: AttendanceTabProps) {
-    const [checkinMap, setCheckinMap] = useState<Record<string, string | null>>(initialCheckinMap);
-
-    useEffect(() => {
-        setCheckinMap(initialCheckinMap);
-    // initialCheckinMap 레퍼런스가 바뀔 때만 동기화 (최초 로드 시)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+const AttendanceTab = memo(function AttendanceTab({ eventId, rows, emailColKey, nameColKey, checkinMap, paidRids, onCheckinMapChange }: AttendanceTabProps) {
     const [filter, setFilter] = useState("");
     const [resetting, setResetting] = useState(false);
 
@@ -647,8 +640,7 @@ const AttendanceTab = memo(function AttendanceTab({ eventId, rows, emailColKey, 
         const next = !current;
         // 낙관적 업데이트
         const updated = { ...checkinMap, [rowId]: next ? new Date().toISOString() : null };
-        setCheckinMap(updated);
-        onCheckinMapChange?.(updated);
+        onCheckinMapChange(updated);
 
         const res = await fetch(`/api/events/${eventId}/checkin`, {
             method: "POST",
@@ -659,8 +651,7 @@ const AttendanceTab = memo(function AttendanceTab({ eventId, rows, emailColKey, 
         if (!data.ok) {
             // 실패 시 롤백
             const rolled = { ...checkinMap, [rowId]: current ? new Date().toISOString() : null };
-            setCheckinMap(rolled);
-            onCheckinMapChange?.(rolled);
+            onCheckinMapChange(rolled);
         }
     }
 
@@ -668,8 +659,7 @@ const AttendanceTab = memo(function AttendanceTab({ eventId, rows, emailColKey, 
         if (!confirm("전체 입장 체크를 초기화하시겠습니까?")) return;
         setResetting(true);
         await fetch(`/api/events/${eventId}/checkin`, { method: "DELETE" });
-        setCheckinMap({});
-        onCheckinMapChange?.({});
+        onCheckinMapChange({});
         setResetting(false);
     }
 
@@ -1331,7 +1321,7 @@ export default function EventDetailPage() {
                         rows={localRows}
                         emailColKey={emailColKey}
                         nameColKey={nameColKey}
-                        initialCheckinMap={checkinMap}
+                        checkinMap={checkinMap}
                         paidRids={paidRids}
                         onCheckinMapChange={setCheckinMap}
                     />

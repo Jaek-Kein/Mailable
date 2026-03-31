@@ -165,16 +165,13 @@ export async function POST(req: NextRequest) {
 
         // checkinMap 레거시 마이그레이션은 하지 않음 (체크인은 당일 이벤트용이라 재수집 시 리셋이 자연스러움)
 
-        // 입금 체크박스 컬럼이 있으면 paidRids에 자동 반영
+        // 입금 체크박스 컬럼이 있으면 paidRids에 자동 반영 (false→true만 반영, true→false는 무시)
         for (const row of rows) {
             const paidKey = Object.keys(row).find((k) => PAID_KEYS.some((p) => k.toLowerCase() === p.toLowerCase()));
             if (paidKey && row._rid) {
                 const val = (row as Record<string, string>)[paidKey] ?? "";
-                if (isTrueValue(val)) {
-                    if (!paidRids.includes(row._rid)) paidRids = [...paidRids, row._rid];
-                } else {
-                    // Sheets에서 명시적으로 false 표시된 경우 paidRids에서 제거
-                    paidRids = paidRids.filter((r) => r !== row._rid);
+                if (isTrueValue(val) && !paidRids.includes(row._rid)) {
+                    paidRids = [...paidRids, row._rid];
                 }
             }
         }

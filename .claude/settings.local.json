@@ -24,7 +24,11 @@
       "Bash(git remote:*)",
       "Bash(git show:*)",
       "Bash(curl -s \"https://docs.google.com/spreadsheets/d/1oFT9YuoQDwEB8dODAbnZI9w9QLyRVMfxXzACB8S9FT8/export?format=csv&gid=0\")",
-      "Bash(curl -L -s \"https://docs.google.com/spreadsheets/d/1oFT9YuoQDwEB8dODAbnZI9w9QLyRVMfxXzACB8S9FT8/export?format=csv&gid=0\")"
+      "Bash(curl -L -s \"https://docs.google.com/spreadsheets/d/1oFT9YuoQDwEB8dODAbnZI9w9QLyRVMfxXzACB8S9FT8/export?format=csv&gid=0\")",
+      "Bash(grep -n \"cancelledRids\\\\|paidRids\\\\|checkinMap\\\\|filtered\\\\|filter\" src/app/events/[id]/page.tsx)",
+      "Bash(grep -n \"const filteredIndexed\\\\|const isBlocked\\\\|const isVisible\" src/app/events/[id]/page.tsx)",
+      "Bash(grep -n \"handleCancelToggle\\\\|handleCheckinToggle\" src/app/events/[id]/page.tsx)",
+      "Bash(grep -n \"CheckTh\\\\|CheckTd\\\\|PaidBtn\\\\|CancelBtn\" src/app/events/[id]/page.tsx)"
     ],
     "additionalDirectories": [
       "z:\\programming\\event-auto-mailing\\mailable\\src\\app\\api\\events\\[id]",
