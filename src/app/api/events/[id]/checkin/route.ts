@@ -1,16 +1,13 @@
-// POST /api/events/[id]/checkin — 입장 체크인 상태 토글
-// body: { rowId: string; checkedIn: boolean }
-// checkinMap은 EventData.payload의 별도 필드에 { [rowId]: ISO_string | null } 형태로 저장
+// POST /api/events/[id]/checkin — 전체 checkinMap bulk save
+// body: { checkinMap: Record<string, string | null> }
+// sendBeacon은 PATCH를 지원하지 않아 POST로 통일
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import { encryptJson, decryptJson } from "@/src/lib/crypto";
 
-const bodySchema = z.object({
-  rowId: z.string().min(1),
-  checkedIn: z.boolean(),
-});
+const bulkSchema = z.object({ checkinMap: z.record(z.string().nullable()) });
 
 export async function POST(
   req: NextRequest,
@@ -35,12 +32,10 @@ export async function POST(
     return NextResponse.json({ ok: false, error: "invalid JSON" }, { status: 400 });
   }
 
-  const parsed = bodySchema.safeParse(body);
+  const parsed = bulkSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ ok: false, error: parsed.error.flatten() }, { status: 400 });
   }
-
-  const { rowId, checkedIn } = parsed.data;
 
   const eventData = await prisma.eventData.findUnique({ where: { eventId: id } });
   if (!eventData) return NextResponse.json({ ok: false, error: "데이터 없음" }, { status: 404 });
@@ -51,20 +46,13 @@ export async function POST(
   } catch {
     return NextResponse.json({ ok: false, error: "데이터 복호화에 실패했습니다." }, { status: 500 });
   }
-  const checkinMap: Record<string, string | null> = payload.checkinMap ?? {};
-
-  if (checkedIn) {
-    checkinMap[rowId] = new Date().toISOString();
-  } else {
-    checkinMap[rowId] = null;
-  }
 
   await prisma.eventData.update({
     where: { eventId: id },
-    data: { payload: encryptJson({ ...payload, checkinMap }) },
+    data: { payload: encryptJson({ ...payload, checkinMap: parsed.data.checkinMap }) },
   });
 
-  return NextResponse.json({ ok: true, rowId, checkedIn, checkedInAt: checkinMap[rowId] });
+  return NextResponse.json({ ok: true });
 }
 
 // DELETE /api/events/[id]/checkin — 전체 체크인 초기화

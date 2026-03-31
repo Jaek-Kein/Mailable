@@ -608,8 +608,32 @@ interface AttendanceTabProps {
 const AttendanceTab = memo(function AttendanceTab({ eventId, rows, emailColKey, nameColKey, checkinMap, paidRids, onCheckinMapChange }: AttendanceTabProps) {
     const [filter, setFilter] = useState("");
     const [resetting, setResetting] = useState(false);
-    // 직렬 큐: 동시 체크인 요청이 순서대로 처리되도록 (서버 write 레이스 방지)
-    const checkinQueueRef = useRef<Promise<void>>(Promise.resolve());
+    const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const pendingMapRef = useRef<Record<string, string | null> | null>(null);
+
+    // 전체 맵을 서버에 저장 (bulk save)
+    const flushCheckinMap = useCallback((map: Record<string, string | null>) => {
+        fetch(`/api/events/${eventId}/checkin`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ checkinMap: map }),
+        });
+    }, [eventId]);
+
+    // 페이지 이탈 시 미전송 변경사항 sendBeacon으로 강제 전송
+    useEffect(() => {
+        const handleBeforeUnload = () => {
+            if (pendingMapRef.current === null) return;
+            if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+            navigator.sendBeacon(
+                `/api/events/${eventId}/checkin`,
+                new Blob([JSON.stringify({ checkinMap: pendingMapRef.current })], { type: "application/json" })
+            );
+            pendingMapRef.current = null;
+        };
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+    }, [eventId]);
 
     // 입금자만 표시
     const paidFilteredRows = useMemo(
@@ -640,26 +664,25 @@ const AttendanceTab = memo(function AttendanceTab({ eventId, rows, emailColKey, 
 
     function toggleCheckin(rowId: string, current: boolean) {
         const next = !current;
-        // 낙관적 업데이트
-        onCheckinMapChange({ ...checkinMap, [rowId]: next ? new Date().toISOString() : null });
-
-        // 직렬 큐에 추가: 이전 요청이 완료된 후 순차 실행 (서버 write 레이스 방지)
-        checkinQueueRef.current = checkinQueueRef.current.then(async () => {
-            const res = await fetch(`/api/events/${eventId}/checkin`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ rowId, checkedIn: next }),
-            });
-            const data = await res.json();
-            if (!data.ok) {
-                // 실패 시 롤백
-                onCheckinMapChange({ ...checkinMap, [rowId]: current ? new Date().toISOString() : null });
-            }
-        });
+        const updated = { ...checkinMap, [rowId]: next ? new Date().toISOString() : null };
+        // 즉시 UI 반영
+        onCheckinMapChange(updated);
+        // 미전송 맵 갱신
+        pendingMapRef.current = updated;
+        // 디바운스: 마지막 토글 후 800ms 뒤에 bulk save
+        if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = setTimeout(() => {
+            flushCheckinMap(updated);
+            pendingMapRef.current = null;
+            debounceTimerRef.current = null;
+        }, 800);
     }
 
     async function resetAll() {
         if (!confirm("전체 입장 체크를 초기화하시겠습니까?")) return;
+        // 진행 중인 디바운스 취소
+        if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+        pendingMapRef.current = null;
         setResetting(true);
         await fetch(`/api/events/${eventId}/checkin`, { method: "DELETE" });
         onCheckinMapChange({});
