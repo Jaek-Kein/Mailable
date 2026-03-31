@@ -1,4 +1,5 @@
-// /api/track/open/[campaignId]?e=<email> — 이메일 오픈 추적 픽셀
+// /api/track/open/[campaignId]?d=<deliveryId> — 이메일 오픈 추적 픽셀
+// deliveryId(UUID)를 토큰으로 사용: 이메일 주소를 URL에 노출하지 않음
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/src/lib/prisma";
 
@@ -10,14 +11,13 @@ const PIXEL = Buffer.from(
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ campaignId: string }> }) {
   const { campaignId } = await params;
-  const email = req.nextUrl.searchParams.get("e");
+  const deliveryId = req.nextUrl.searchParams.get("d");
 
-  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (email && EMAIL_RE.test(email)) {
-    // 최초 오픈만 기록
+  if (deliveryId) {
+    // 최초 오픈만 기록 — campaignId와 deliveryId 둘 다 일치해야 업데이트
     try {
       await prisma.emailDelivery.updateMany({
-        where: { campaignId, recipientEmail: email, openedAt: null },
+        where: { id: deliveryId, campaignId, openedAt: null },
         data: { openedAt: new Date(), status: "OPENED" },
       });
     } catch (e) {

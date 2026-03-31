@@ -28,7 +28,8 @@
       "Bash(grep -n \"cancelledRids\\\\|paidRids\\\\|checkinMap\\\\|filtered\\\\|filter\" src/app/events/[id]/page.tsx)",
       "Bash(grep -n \"const filteredIndexed\\\\|const isBlocked\\\\|const isVisible\" src/app/events/[id]/page.tsx)",
       "Bash(grep -n \"handleCancelToggle\\\\|handleCheckinToggle\" src/app/events/[id]/page.tsx)",
-      "Bash(grep -n \"CheckTh\\\\|CheckTd\\\\|PaidBtn\\\\|CancelBtn\" src/app/events/[id]/page.tsx)"
+      "Bash(grep -n \"CheckTh\\\\|CheckTd\\\\|PaidBtn\\\\|CancelBtn\" src/app/events/[id]/page.tsx)",
+      "Bash(xargs grep:*)"
     ],
     "additionalDirectories": [
       "z:\\programming\\event-auto-mailing\\mailable\\src\\app\\api\\events\\[id]",
