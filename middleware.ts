@@ -14,24 +14,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
-  const csp = [
-    "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}'`,
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data: blob: https://*.public.blob.vercel-storage.com",
-    "connect-src 'self'",
-    "frame-ancestors 'none'",
-  ].join("; ");
-
-  const response = NextResponse.next({
-    request: { headers: new Headers(request.headers) },
-  });
-  response.headers.set("Content-Security-Policy", csp);
-  response.headers.set("x-nonce", nonce);
-
-  return response;
+  return NextResponse.next();
 }
 
 export const config = {
