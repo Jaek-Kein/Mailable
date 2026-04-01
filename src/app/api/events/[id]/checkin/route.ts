@@ -7,7 +7,7 @@ import { auth } from "@/src/lib/auth";
 import { prisma } from "@/src/lib/prisma";
 import { encryptJson, decryptJson } from "@/src/lib/crypto";
 
-const bulkSchema = z.object({ checkinMap: z.record(z.string().nullable()) });
+const bulkSchema = z.object({ checkinMap: z.record(z.string(), z.string().nullable()) });
 
 export async function POST(
   req: NextRequest,
