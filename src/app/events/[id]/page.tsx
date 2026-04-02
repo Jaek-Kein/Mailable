@@ -429,8 +429,9 @@ const Tab = styled.button<{ active: boolean }>`
 /* ────────── Attendance Check styles ────────── */
 const CheckinStats = styled.div`
     display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
+    gap: 0.5rem;
+    flex-wrap: nowrap;
+    align-items: center;
 `;
 
 const StatChip = styled.div<{ variant?: "success" | "muted" }>`
@@ -441,6 +442,8 @@ const StatChip = styled.div<{ variant?: "success" | "muted" }>`
     border-radius: 999px;
     font-size: 0.85rem;
     font-weight: 500;
+    min-width: 0;
+    white-space: nowrap;
     background: ${({ variant }) => variant === "success" ? "#dcfce7" : variant === "muted" ? C.paper : C.accentLight};
     color: ${({ variant }) => variant === "success" ? "#16a34a" : variant === "muted" ? C.inkMuted : C.accent};
     border: 1px solid ${({ variant }) => variant === "success" ? "#bbf7d0" : variant === "muted" ? C.border : "#fdd3c8"};
