@@ -429,21 +429,26 @@ const Tab = styled.button<{ active: boolean }>`
 /* ────────── Attendance Check styles ────────── */
 const CheckinStats = styled.div`
     display: flex;
-    gap: 0.5rem;
+    gap: 0.4rem;
     flex-wrap: nowrap;
     align-items: center;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    &::-webkit-scrollbar { display: none; }
 `;
 
 const StatChip = styled.div<{ variant?: "success" | "muted" }>`
     display: flex;
     align-items: center;
-    gap: 0.4rem;
-    padding: 0.4rem 0.9rem;
+    gap: 0.3rem;
+    padding: 0.35rem 0.75rem;
     border-radius: 999px;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     font-weight: 500;
     min-width: 0;
     white-space: nowrap;
+    flex-shrink: 0;
     background: ${({ variant }) => variant === "success" ? "#dcfce7" : variant === "muted" ? C.paper : C.accentLight};
     color: ${({ variant }) => variant === "success" ? "#16a34a" : variant === "muted" ? C.inkMuted : C.accent};
     border: 1px solid ${({ variant }) => variant === "success" ? "#bbf7d0" : variant === "muted" ? C.border : "#fdd3c8"};
@@ -687,24 +692,39 @@ const SelectBar = styled.div`
     }
 `;
 
-/* ────────── Inline edit styles ────────── */
-const CellInput = styled.input`
-    width: 100%;
-    border: 1px solid ${C.accent};
-    border-radius: 4px;
-    padding: 2px 6px;
-    font-size: 0.875rem;
+const SelectBarBtn = styled.button<{ variant?: "primary" | "danger" | "muted" }>`
+    appearance: none;
+    border: 1.5px solid ${({ variant }) =>
+        variant === "primary" ? "#bfdbfe" :
+        variant === "danger" ? "#fdd3c8" :
+        C.border};
+    background: ${({ variant }) =>
+        variant === "primary" ? "#eff6ff" :
+        variant === "danger" ? C.accentLight :
+        C.card};
+    color: ${({ variant }) =>
+        variant === "primary" ? "#1d4ed8" :
+        variant === "danger" ? C.accent :
+        C.inkSoft};
+    border-radius: 8px;
+    padding: 5px 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
     font-family: var(--font-sans, sans-serif);
-    box-sizing: border-box;
-    outline: none;
-    background: ${C.accentLight};
+    cursor: pointer;
+    white-space: nowrap;
+    min-height: 32px;
+    transition: opacity 0.15s, background 0.15s;
+    &:hover { opacity: 0.8; }
+    &:active { opacity: 0.6; transform: scale(0.97); }
+
+    @media (max-width: 640px) {
+        min-height: 36px;
+        padding: 6px 14px;
+        font-size: 0.82rem;
+    }
 `;
 
-const EditHint = styled.span`
-    font-size: 0.72rem;
-    color: ${C.inkMuted};
-    margin-left: 0.5rem;
-`;
 
 const CancelBtn = styled.button<{ cancelled: boolean }>`
     appearance: none;
@@ -756,10 +776,11 @@ const DesktopTable = styled.div`
 `;
 
 const MobileCard = styled.div<{ cancelled: boolean; checked: boolean }>`
-    background: ${C.card};
-    border: 1.5px solid ${({ checked }) => checked ? C.accent : ({ cancelled }) => cancelled ? C.border : C.border};
-    border-color: ${({ checked, cancelled }) => checked ? C.accent : cancelled ? C.border : C.border};
+    background: ${({ checked }) => checked ? C.accentLight : C.card};
+    border: 1.5px solid ${({ checked, cancelled }) => checked ? C.accent : cancelled ? C.border : C.border};
+    border-left-width: ${({ checked }) => checked ? "3.5px" : "1.5px"};
     border-radius: 12px;
+    transition: background 0.12s, border-color 0.12s;
     padding: 0.85rem 1rem;
     display: grid;
     gap: 0.5rem;
@@ -767,6 +788,8 @@ const MobileCard = styled.div<{ cancelled: boolean; checked: boolean }>`
     transition: border-color 0.15s, box-shadow 0.15s;
     box-shadow: ${({ checked }) => checked ? `0 0 0 3px ${C.accentLight}` : "none"};
     position: relative;
+    cursor: ${({ cancelled }) => cancelled ? "default" : "pointer"};
+    user-select: none;
 `;
 
 const MobileCardTop = styled.div`
@@ -841,11 +864,7 @@ const MobileCancelBtn = styled.button<{ cancelled: boolean }>`
 `;
 
 const MobileCheckbox = styled.input`
-    width: 20px;
-    height: 20px;
-    flex-shrink: 0;
-    cursor: pointer;
-    accent-color: ${C.accent};
+    display: none;
 `;
 
 const MobileSelectAllRow = styled.div`
@@ -861,6 +880,11 @@ const MobileSelectAllRow = styled.div`
     @media (max-width: 640px) {
         display: flex;
     }
+`;
+
+const MobileOnly = styled.div`
+    display: none;
+    @media (max-width: 640px) { display: contents; }
 `;
 
 const MobileToolbar = styled.div`
@@ -1218,8 +1242,6 @@ export default function EventDetailPage() {
     const [deliveryMap, setDeliveryMap] = useState<Record<string, { status: string; sentAt: string | null; openedAt: string | null }>>({});
 
     const [localRows, setLocalRows] = useState<Record<string, string>[]>([]);
-    const [editingCell, setEditingCell] = useState<{ rowIndex: number; col: string } | null>(null);
-    const [editValue, setEditValue] = useState("");
     const [checkedIndices, setCheckedIndices] = useState<Set<number>>(new Set());
 
     const [modalOpen, setModalOpen] = useState(false);
@@ -1283,20 +1305,7 @@ export default function EventDetailPage() {
                 const allCols = loaded.length > 0 ? Object.keys(loaded[0]) : [];
                 const emailKey = detectCol(EMAIL_KEYS, allCols);
                 const cancelledRidSet = new Set(cancelledRidsArr);
-                const defaultSelected = new Set(
-                    loaded
-                        .map((row, i) => ({ row, i }))
-                        .filter(({ row }) => {
-                            if (cancelledRidSet.has(row._rid ?? "")) return false;
-                            if (!emailKey) return true;
-                            const email = row[emailKey]?.trim();
-                            if (!email) return true;
-                            const delivery = dMap[email];
-                            return !delivery || !SENT_STATUSES.has(delivery.status);
-                        })
-                        .map(({ i }) => i)
-                );
-                setCheckedIndices(defaultSelected);
+                setCheckedIndices(new Set());
             })
             .catch((e) => {
                 if (e.name === "AbortError") return;
@@ -1367,25 +1376,6 @@ export default function EventDetailPage() {
     const visibleOrigIndices = filteredIndexed.map(({ origIdx }) => origIdx);
     const allVisibleChecked = visibleOrigIndices.length > 0 && visibleOrigIndices.every((i) => checkedIndices.has(i));
     const someVisibleChecked = visibleOrigIndices.some((i) => checkedIndices.has(i));
-
-    async function handleCellSave(rowIndex: number, col: string, value: string) {
-        if (value === rows[rowIndex]?.[col]) { setEditingCell(null); return; }
-        const res = await fetch(`/api/events/${id}/data`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ rowIndex, updates: { [col]: value } }),
-        });
-        const data = await res.json();
-        if (data.ok) {
-            setLocalRows((prev) => prev.map((r, i) => i === rowIndex ? { ...r, [col]: value } : r));
-        }
-        setEditingCell(null);
-    }
-
-    function startEdit(rowIndex: number, col: string) {
-        setEditingCell({ rowIndex, col });
-        setEditValue(rows[rowIndex]?.[col] ?? "");
-    }
 
     function toggleRow(origIdx: number) {
         setCheckedIndices((prev) => {
@@ -1630,8 +1620,9 @@ export default function EventDetailPage() {
                                     disabled={checkedIndices.size === 0 || !hasTemplate}
                                     title={!hasTemplate ? "이메일 템플릿을 먼저 설정하세요" : undefined}
                                     onClick={() => { setModalOpen(true); setSendResult(null); }}
+                                    style={{ minWidth: "140px" }}
                                 >
-                                    이메일 발송 {checkedIndices.size > 0 && `(${checkedIndices.size}명)`}
+                                    이메일 발송 ({checkedIndices.size}명)
                                 </PrimaryBtn>
                             </>
                         )}
@@ -1678,7 +1669,7 @@ export default function EventDetailPage() {
                                 onClick={() => { setModalOpen(true); setSendResult(null); }}
                                 style={{ width: "100%" }}
                             >
-                                이메일 발송 {checkedIndices.size > 0 && `(${checkedIndices.size}명)`}
+                                이메일 발송 ({checkedIndices.size}명)
                             </PrimaryBtn>
                         </MobileToolbar>
 
@@ -1690,43 +1681,40 @@ export default function EventDetailPage() {
                                         {filteredIndexed.length}명 표시 중 (전체 {rows.length}명)
                                     </p>
                                 ) : <span />}
-                                {checkedIndices.size > 0 && (
-                                    <SelectBar>
-                                        <strong>{checkedIndices.size}명</strong> 선택됨
-                                        <button type="button" onClick={() => setCheckedIndices(new Set())} style={{ background: "none", border: "none", color: C.accent, cursor: "pointer", fontSize: "0.8rem", padding: 0, textDecoration: "underline" }}>전체 해제</button>
-                                        <button type="button" onClick={() => setCheckedIndices(new Set(rows.map((_, i) => i)))} style={{ background: "none", border: "none", color: C.accent, cursor: "pointer", fontSize: "0.8rem", padding: 0, textDecoration: "underline" }}>전체 선택</button>
-                                        {emailColKey && (
-                                            <>
-                                                <span style={{ width: "1px", height: "14px", background: C.border, display: "inline-block", margin: "0 0.1rem" }} />
-                                                <button type="button" onClick={() => handleBulkPayment(true)} style={{ background: "none", border: "none", color: "#1d4ed8", cursor: "pointer", fontSize: "0.8rem", padding: 0, textDecoration: "underline" }}>일괄 입금</button>
-                                                <button type="button" onClick={() => handleBulkPayment(false)} style={{ background: "none", border: "none", color: C.inkMuted, cursor: "pointer", fontSize: "0.8rem", padding: 0, textDecoration: "underline" }}>일괄 미입금</button>
-                                            </>
-                                        )}
-                                    </SelectBar>
-                                )}
+                                <SelectBar style={{ opacity: checkedIndices.size === 0 ? 0.45 : 1 }}>
+                                    <strong>{checkedIndices.size}명</strong> 선택됨
+                                    <SelectBarBtn type="button" disabled={checkedIndices.size === 0} onClick={() => setCheckedIndices(new Set())}>전체 해제</SelectBarBtn>
+                                    <SelectBarBtn type="button" onClick={() => setCheckedIndices(new Set(rows.map((_, i) => i)))}>전체 선택</SelectBarBtn>
+                                    {emailColKey && (
+                                        <>
+                                            <span style={{ width: "1px", height: "14px", background: C.border, display: "inline-block", margin: "0 0.1rem" }} />
+                                            <SelectBarBtn type="button" variant="primary" disabled={checkedIndices.size === 0} onClick={() => handleBulkPayment(true)}>일괄 입금</SelectBarBtn>
+                                            <SelectBarBtn type="button" variant="muted" disabled={checkedIndices.size === 0} onClick={() => handleBulkPayment(false)}>일괄 미입금</SelectBarBtn>
+                                        </>
+                                    )}
+                                </SelectBar>
                             </div>
                         </DesktopTable>
 
-                        <EditHint>셀을 클릭하면 직접 수정할 수 있습니다</EditHint>
-
-                        {/* ── 모바일 선택 바 (bottom sheet, ≤640px) ── */}
+{/* ── 모바일 선택 바 (bottom sheet, ≤640px) ── */}
+                        <MobileOnly>
                         {checkedIndices.size > 0 && (
                             <SelectBar>
                                 <strong style={{ fontSize: "0.9rem" }}>{checkedIndices.size}명</strong>
                                 <span style={{ color: C.inkMuted, fontSize: "0.82rem" }}>선택됨</span>
                                 <div style={{ display: "flex", gap: "0.4rem", marginLeft: "auto", flexWrap: "wrap" }}>
-                                    <button type="button" onClick={() => setCheckedIndices(new Set())} style={{ background: "none", border: "none", color: C.accent, cursor: "pointer", fontSize: "0.82rem", padding: 0, textDecoration: "underline" }}>해제</button>
-                                    <button type="button" onClick={() => setCheckedIndices(new Set(rows.map((_, i) => i)))} style={{ background: "none", border: "none", color: C.accent, cursor: "pointer", fontSize: "0.82rem", padding: 0, textDecoration: "underline" }}>전체</button>
+                                    <SelectBarBtn type="button" onClick={() => setCheckedIndices(new Set())}>해제</SelectBarBtn>
+                                    <SelectBarBtn type="button" onClick={() => setCheckedIndices(new Set(rows.map((_, i) => i)))}>전체</SelectBarBtn>
                                     {emailColKey && (
                                         <>
-                                            <span style={{ width: "1px", height: "14px", background: C.border, display: "inline-block", alignSelf: "center" }} />
-                                            <button type="button" onClick={() => handleBulkPayment(true)} style={{ background: "none", border: "none", color: "#1d4ed8", cursor: "pointer", fontSize: "0.82rem", padding: 0, textDecoration: "underline" }}>일괄 입금</button>
-                                            <button type="button" onClick={() => handleBulkPayment(false)} style={{ background: "none", border: "none", color: C.inkMuted, cursor: "pointer", fontSize: "0.82rem", padding: 0, textDecoration: "underline" }}>일괄 미입금</button>
+                                            <SelectBarBtn type="button" variant="primary" onClick={() => handleBulkPayment(true)}>일괄 입금</SelectBarBtn>
+                                            <SelectBarBtn type="button" variant="muted" onClick={() => handleBulkPayment(false)}>일괄 미입금</SelectBarBtn>
                                         </>
                                     )}
                                 </div>
                             </SelectBar>
                         )}
+                        </MobileOnly>
 
                         {/* ── 모바일 카드 리스트 (≤640px) ── */}
                         <MobileList hasSelection={checkedIndices.size > 0}>
@@ -1736,14 +1724,13 @@ export default function EventDetailPage() {
                                 </p>
                             )}
                             <MobileSelectAllRow>
-                                <MobileCheckbox
-                                    type="checkbox"
-                                    checked={allVisibleChecked}
-                                    ref={(el) => { if (el) el.indeterminate = !allVisibleChecked && someVisibleChecked; }}
-                                    onChange={() => toggleAllVisible(visibleOrigIndices)}
-                                    aria-label="전체 선택"
-                                />
-                                <span style={{ color: C.inkMuted, fontSize: "0.85rem" }}>전체 선택</span>
+                                <button
+                                    type="button"
+                                    onClick={() => toggleAllVisible(visibleOrigIndices)}
+                                    style={{ background: "none", border: "none", color: C.accent, cursor: "pointer", fontSize: "0.85rem", fontWeight: 600, padding: 0 }}
+                                >
+                                    {allVisibleChecked ? "전체 해제" : "전체 선택"}
+                                </button>
                                 {checkedIndices.size > 0 && (
                                     <span style={{ marginLeft: "auto", color: C.accent, fontWeight: 600, fontSize: "0.85rem" }}>
                                         {checkedIndices.size}명 선택됨
@@ -1758,17 +1745,17 @@ export default function EventDetailPage() {
                                 const email = emailColKey ? (row[emailColKey] ?? "") : "";
                                 const timestamp = row[displayColumns.find(c => TIMESTAMP_KEYS.includes(c.key.toLowerCase()))?.key ?? ""] ?? "";
                                 return (
-                                    <MobileCard key={origIdx} cancelled={isCancelled} checked={isChecked}>
+                                    <MobileCard key={origIdx} cancelled={isCancelled} checked={isChecked} onClick={() => !isCancelled && toggleRow(origIdx)}>
                                         <MobileCardTop>
                                             <MobileCheckbox
                                                 type="checkbox"
                                                 checked={isChecked}
-                                                onChange={() => toggleRow(origIdx)}
-                                                disabled={isCancelled}
+                                                onChange={() => {}}
                                                 onClick={(e) => e.stopPropagation()}
+                                                disabled={isCancelled}
                                                 aria-label={`${name || "참가자"} 선택`}
                                             />
-                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "0.2rem" }}>
                                                 <MobileCardName style={{ textDecoration: isCancelled ? "line-through" : "none" }}>
                                                     {name || `참가자 ${origIdx + 1}`}
                                                 </MobileCardName>
@@ -1784,7 +1771,7 @@ export default function EventDetailPage() {
                                         <MobileCardActions>
                                             <MobilePaidBtn
                                                 paid={isPaid}
-                                                onClick={() => handlePaymentToggle(origIdx)}
+                                                onClick={(e) => { e.stopPropagation(); handlePaymentToggle(origIdx); }}
                                                 disabled={isCancelled}
                                                 title={isPaid ? "입금 취소" : "입금 확인"}
                                             >
@@ -1792,7 +1779,7 @@ export default function EventDetailPage() {
                                             </MobilePaidBtn>
                                             <MobileCancelBtn
                                                 cancelled={isCancelled}
-                                                onClick={() => handleCancelToggle(origIdx)}
+                                                onClick={(e) => { e.stopPropagation(); handleCancelToggle(origIdx); }}
                                                 title={isCancelled ? "참여 복원" : "참여 취소"}
                                             >
                                                 {isCancelled ? "재참여" : "참여 취소"}
@@ -1834,7 +1821,7 @@ export default function EventDetailPage() {
                                             const { row, origIdx } = filteredIndexed[virtualRow.index];
                                             const isCancelled = row._rid ? cancelledRids.has(row._rid) : false;
                                             return (
-                                                <tr key={origIdx} style={{ opacity: isCancelled ? 0.5 : 1 }}>
+                                                <tr key={origIdx} style={{ opacity: isCancelled ? 0.5 : 1, cursor: isCancelled ? "default" : "pointer", background: checkedIndices.has(origIdx) ? C.accentLight : undefined, boxShadow: checkedIndices.has(origIdx) ? `inset 3px 0 0 ${C.accent}` : undefined, transition: "background 0.12s" }} onClick={() => !isCancelled && toggleRow(origIdx)}>
                                                     <CheckTd onClick={(e) => e.stopPropagation()}>
                                                         <input
                                                             type="checkbox"
@@ -1845,32 +1832,16 @@ export default function EventDetailPage() {
                                                         />
                                                     </CheckTd>
                                                     {displayColumns.map(({ key }) => {
-                                                        const isEditing = editingCell?.rowIndex === origIdx && editingCell?.col === key;
                                                         return (
                                                             <td
                                                                 key={key}
-                                                                onClick={() => { if (!isEditing && !isCancelled) startEdit(origIdx, key); }}
                                                                 style={{
-                                                                    cursor: isCancelled ? "default" : "pointer",
                                                                     minWidth: "80px",
                                                                     textDecoration: isCancelled ? "line-through" : "none",
                                                                     color: isCancelled ? C.inkMuted : undefined,
                                                                 }}
                                                             >
-                                                                {isEditing ? (
-                                                                    <CellInput
-                                                                        autoFocus
-                                                                        value={editValue}
-                                                                        onChange={(e) => setEditValue(e.target.value)}
-                                                                        onKeyDown={(e) => {
-                                                                            if (e.key === "Enter") handleCellSave(origIdx, key, editValue);
-                                                                            if (e.key === "Escape") setEditingCell(null);
-                                                                        }}
-                                                                        onBlur={() => handleCellSave(origIdx, key, editValue)}
-                                                                    />
-                                                                ) : (
-                                                                    row[key] ?? "—"
-                                                                )}
+                                                                {row[key] ?? "—"}
                                                             </td>
                                                         );
                                                     })}
@@ -1889,7 +1860,7 @@ export default function EventDetailPage() {
                                                             );
                                                         })()}
                                                     </td>
-                                                    <td style={{ whiteSpace: "nowrap" }}>
+                                                    <td style={{ whiteSpace: "nowrap" }} onClick={(e) => e.stopPropagation()}>
                                                         <DeliveryBadge
                                                             info={emailColKey ? deliveryMap[row[emailColKey]?.trim()] : undefined}
                                                         />
