@@ -243,7 +243,7 @@ const Toolbar = styled.div`
     gap: 0.75rem;
     margin-bottom: 0.5rem;
 
-    @media (max-width: 480px) {
+    @media (max-width: 640px) {
         flex-direction: column;
         align-items: stretch;
         gap: 0.6rem;
@@ -458,6 +458,8 @@ const CheckinRow = styled.div<{ checked: boolean }>`
     cursor: pointer;
     user-select: none;
     min-height: 56px;
+    min-width: 0;
+    overflow: hidden;
 
     &:hover {
         background: ${({ checked }) => checked ? "#dcfce7" : C.paper};
@@ -466,6 +468,7 @@ const CheckinRow = styled.div<{ checked: boolean }>`
     @media (max-width: 480px) {
         gap: 0.75rem;
         padding: 0.75rem;
+        flex-wrap: wrap;
     }
 `;
 
@@ -488,7 +491,17 @@ const CheckinName = styled.span`
     font-size: 0.9rem;
     font-weight: 500;
     color: ${C.ink};
-    min-width: 100px;
+    min-width: 80px;
+    flex-shrink: 0;
+
+    @media (max-width: 480px) {
+        min-width: 0;
+        flex-shrink: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 120px;
+    }
 `;
 
 const CheckinEmail = styled.span`
@@ -510,6 +523,12 @@ const CheckinTime = styled.span`
     color: #16a34a;
     white-space: nowrap;
     flex-shrink: 0;
+
+    @media (max-width: 480px) {
+        width: 100%;
+        padding-left: calc(28px + 0.75rem);
+        font-size: 0.7rem;
+    }
 `;
 
 /* ────────── 초성 검색 ────────── */
@@ -649,6 +668,20 @@ const SelectBar = styled.div`
     border-radius: 8px;
     font-size: 0.85rem;
     color: ${C.accent};
+
+    @media (max-width: 640px) {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 40;
+        border-radius: 16px 16px 0 0;
+        padding: 1rem 1.25rem calc(1rem + env(safe-area-inset-bottom));
+        box-shadow: 0 -4px 24px rgba(26,26,46,0.12);
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        border-top: 1px solid #fdd3c8;
+    }
 `;
 
 /* ────────── Inline edit styles ────────── */
@@ -698,6 +731,162 @@ const PaidBtn = styled.button<{ paid: boolean }>`
     white-space: nowrap;
     transition: opacity 0.15s, background 0.15s, border-color 0.15s, color 0.15s;
     &:hover { opacity: 0.75; }
+`;
+
+/* ────────── Mobile card list (≤640px) ────────── */
+const MobileList = styled.div<{ hasSelection: boolean }>`
+    display: none;
+    flex-direction: column;
+    gap: 0.5rem;
+
+    @media (max-width: 640px) {
+        display: flex;
+        padding-bottom: ${({ hasSelection }) => hasSelection ? "110px" : "0"};
+        transition: padding-bottom 0.2s ease;
+    }
+`;
+
+const DesktopTable = styled.div`
+    @media (max-width: 640px) {
+        display: none;
+    }
+`;
+
+const MobileCard = styled.div<{ cancelled: boolean; checked: boolean }>`
+    background: ${C.card};
+    border: 1.5px solid ${({ checked }) => checked ? C.accent : ({ cancelled }) => cancelled ? C.border : C.border};
+    border-color: ${({ checked, cancelled }) => checked ? C.accent : cancelled ? C.border : C.border};
+    border-radius: 12px;
+    padding: 0.85rem 1rem;
+    display: grid;
+    gap: 0.5rem;
+    opacity: ${({ cancelled }) => cancelled ? 0.55 : 1};
+    transition: border-color 0.15s, box-shadow 0.15s;
+    box-shadow: ${({ checked }) => checked ? `0 0 0 3px ${C.accentLight}` : "none"};
+    position: relative;
+`;
+
+const MobileCardTop = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+`;
+
+const MobileCardName = styled.span`
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: ${C.ink};
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+`;
+
+const MobileCardEmail = styled.span`
+    font-size: 0.78rem;
+    color: ${C.inkMuted};
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+`;
+
+const MobileCardMeta = styled.div`
+    font-size: 0.75rem;
+    color: ${C.inkMuted};
+`;
+
+const MobileCardActions = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.1rem;
+    flex-wrap: wrap;
+`;
+
+const MobilePaidBtn = styled.button<{ paid: boolean }>`
+    appearance: none;
+    border: 1.5px solid ${({ paid }) => paid ? "#bfdbfe" : C.border};
+    background: ${({ paid }) => paid ? "#eff6ff" : C.paper};
+    color: ${({ paid }) => paid ? "#1d4ed8" : C.inkMuted};
+    border-radius: 8px;
+    padding: 5px 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    min-height: 34px;
+    transition: opacity 0.15s, background 0.15s, border-color 0.15s;
+    &:active { opacity: 0.7; transform: scale(0.97); }
+    &:disabled { opacity: 0.4; cursor: not-allowed; }
+`;
+
+const MobileCancelBtn = styled.button<{ cancelled: boolean }>`
+    appearance: none;
+    border: 1.5px solid ${({ cancelled }) => cancelled ? "#bbf7d0" : "#fdd3c8"};
+    background: ${({ cancelled }) => cancelled ? "#f0fdf4" : C.accentLight};
+    color: ${({ cancelled }) => cancelled ? "#16a34a" : C.accent};
+    border-radius: 8px;
+    padding: 5px 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    min-height: 34px;
+    transition: opacity 0.15s;
+    &:active { opacity: 0.7; transform: scale(0.97); }
+`;
+
+const MobileCheckbox = styled.input`
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    cursor: pointer;
+    accent-color: ${C.accent};
+`;
+
+const MobileSelectAllRow = styled.div`
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+    font-size: 0.85rem;
+    color: ${C.inkMuted};
+    border-bottom: 1px solid ${C.border};
+    margin-bottom: 0.25rem;
+
+    @media (max-width: 640px) {
+        display: flex;
+    }
+`;
+
+const MobileToolbar = styled.div`
+    display: none;
+
+    @media (max-width: 640px) {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        margin-bottom: 0.25rem;
+    }
+`;
+
+const DesktopToolbarActions = styled.div`
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+
+    @media (max-width: 640px) {
+        display: none;
+    }
+`;
+
+const MobileToolbarRow = styled.div`
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
 `;
 
 /* ────────── AttendanceTab ────────── */
@@ -1417,7 +1606,7 @@ export default function EventDetailPage() {
                         </GhostBtn>
                     )}
                     {activeTab === "email" && (
-                    <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+                    <DesktopToolbarActions>
                         {rows.length > 0 && (
                             <>
                                 <FilterInput
@@ -1443,7 +1632,7 @@ export default function EventDetailPage() {
                                 </PrimaryBtn>
                             </>
                         )}
-                    </div>
+                    </DesktopToolbarActions>
                     )}
                 </Toolbar>
 
@@ -1461,165 +1650,272 @@ export default function EventDetailPage() {
                     <Empty>수집된 참가자 데이터가 없습니다. 행사 카드에서 Sheets URL로 데이터를 수집하세요.</Empty>
                 ) : (
                     <>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
-                            {filter ? (
-                                <p style={{ margin: 0, fontSize: "0.8rem", color: C.inkMuted }}>
-                                    {filteredIndexed.length}명 표시 중 (전체 {rows.length}명)
-                                </p>
-                            ) : <span />}
-                            {checkedIndices.size > 0 && (
-                                <SelectBar>
-                                    <strong>{checkedIndices.size}명</strong> 선택됨
-                                    <button
-                                        type="button"
-                                        onClick={() => setCheckedIndices(new Set())}
-                                        style={{ background: "none", border: "none", color: C.accent, cursor: "pointer", fontSize: "0.8rem", padding: 0, textDecoration: "underline" }}
-                                    >
-                                        전체 해제
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setCheckedIndices(new Set(rows.map((_, i) => i)))}
-                                        style={{ background: "none", border: "none", color: C.accent, cursor: "pointer", fontSize: "0.8rem", padding: 0, textDecoration: "underline" }}
-                                    >
-                                        전체 선택
-                                    </button>
+                        {/* ── 모바일 툴바 (≤640px) ── */}
+                        <MobileToolbar>
+                            <FilterInput
+                                type="search"
+                                placeholder="검색..."
+                                value={filter}
+                                onChange={(e) => setFilter(e.target.value)}
+                                style={{ width: "100%", fontSize: "1rem" }}
+                            />
+                            <MobileToolbarRow>
+                                {cancelledRids.size > 0 && (
+                                    <GhostBtn onClick={() => setShowCancelled((v) => !v)} style={{ fontSize: "0.8rem", flex: 1 }}>
+                                        {showCancelled ? `취소자 숨기기 (${cancelledRids.size})` : `취소자 보기 (${cancelledRids.size})`}
+                                    </GhostBtn>
+                                )}
+                                <GhostBtn onClick={() => exportCsv(localRows, `${event.title}_participants.csv`)} style={{ flex: 1 }}>
+                                    CSV 내보내기
+                                </GhostBtn>
+                            </MobileToolbarRow>
+                            <PrimaryBtn
+                                disabled={checkedIndices.size === 0 || !hasTemplate}
+                                title={!hasTemplate ? "이메일 템플릿을 먼저 설정하세요" : undefined}
+                                onClick={() => { setModalOpen(true); setSendResult(null); }}
+                                style={{ width: "100%" }}
+                            >
+                                이메일 발송 {checkedIndices.size > 0 && `(${checkedIndices.size}명)`}
+                            </PrimaryBtn>
+                        </MobileToolbar>
+
+                        {/* ── 데스크톱 필터/상태 행 ── */}
+                        <DesktopTable>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
+                                {filter ? (
+                                    <p style={{ margin: 0, fontSize: "0.8rem", color: C.inkMuted }}>
+                                        {filteredIndexed.length}명 표시 중 (전체 {rows.length}명)
+                                    </p>
+                                ) : <span />}
+                                {checkedIndices.size > 0 && (
+                                    <SelectBar>
+                                        <strong>{checkedIndices.size}명</strong> 선택됨
+                                        <button type="button" onClick={() => setCheckedIndices(new Set())} style={{ background: "none", border: "none", color: C.accent, cursor: "pointer", fontSize: "0.8rem", padding: 0, textDecoration: "underline" }}>전체 해제</button>
+                                        <button type="button" onClick={() => setCheckedIndices(new Set(rows.map((_, i) => i)))} style={{ background: "none", border: "none", color: C.accent, cursor: "pointer", fontSize: "0.8rem", padding: 0, textDecoration: "underline" }}>전체 선택</button>
+                                        {emailColKey && (
+                                            <>
+                                                <span style={{ width: "1px", height: "14px", background: C.border, display: "inline-block", margin: "0 0.1rem" }} />
+                                                <button type="button" onClick={() => handleBulkPayment(true)} style={{ background: "none", border: "none", color: "#1d4ed8", cursor: "pointer", fontSize: "0.8rem", padding: 0, textDecoration: "underline" }}>일괄 입금</button>
+                                                <button type="button" onClick={() => handleBulkPayment(false)} style={{ background: "none", border: "none", color: C.inkMuted, cursor: "pointer", fontSize: "0.8rem", padding: 0, textDecoration: "underline" }}>일괄 미입금</button>
+                                            </>
+                                        )}
+                                    </SelectBar>
+                                )}
+                            </div>
+                        </DesktopTable>
+
+                        <EditHint>셀을 클릭하면 직접 수정할 수 있습니다</EditHint>
+
+                        {/* ── 모바일 선택 바 (bottom sheet, ≤640px) ── */}
+                        {checkedIndices.size > 0 && (
+                            <SelectBar>
+                                <strong style={{ fontSize: "0.9rem" }}>{checkedIndices.size}명</strong>
+                                <span style={{ color: C.inkMuted, fontSize: "0.82rem" }}>선택됨</span>
+                                <div style={{ display: "flex", gap: "0.4rem", marginLeft: "auto", flexWrap: "wrap" }}>
+                                    <button type="button" onClick={() => setCheckedIndices(new Set())} style={{ background: "none", border: "none", color: C.accent, cursor: "pointer", fontSize: "0.82rem", padding: 0, textDecoration: "underline" }}>해제</button>
+                                    <button type="button" onClick={() => setCheckedIndices(new Set(rows.map((_, i) => i)))} style={{ background: "none", border: "none", color: C.accent, cursor: "pointer", fontSize: "0.82rem", padding: 0, textDecoration: "underline" }}>전체</button>
                                     {emailColKey && (
                                         <>
-                                            <span style={{ width: "1px", height: "14px", background: C.border, display: "inline-block", margin: "0 0.1rem" }} />
-                                            <button
-                                                type="button"
-                                                onClick={() => handleBulkPayment(true)}
-                                                style={{ background: "none", border: "none", color: "#1d4ed8", cursor: "pointer", fontSize: "0.8rem", padding: 0, textDecoration: "underline" }}
-                                            >
-                                                일괄 입금
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleBulkPayment(false)}
-                                                style={{ background: "none", border: "none", color: C.inkMuted, cursor: "pointer", fontSize: "0.8rem", padding: 0, textDecoration: "underline" }}
-                                            >
-                                                일괄 미입금
-                                            </button>
+                                            <span style={{ width: "1px", height: "14px", background: C.border, display: "inline-block", alignSelf: "center" }} />
+                                            <button type="button" onClick={() => handleBulkPayment(true)} style={{ background: "none", border: "none", color: "#1d4ed8", cursor: "pointer", fontSize: "0.82rem", padding: 0, textDecoration: "underline" }}>일괄 입금</button>
+                                            <button type="button" onClick={() => handleBulkPayment(false)} style={{ background: "none", border: "none", color: C.inkMuted, cursor: "pointer", fontSize: "0.82rem", padding: 0, textDecoration: "underline" }}>일괄 미입금</button>
                                         </>
                                     )}
-                                </SelectBar>
+                                </div>
+                            </SelectBar>
+                        )}
+
+                        {/* ── 모바일 카드 리스트 (≤640px) ── */}
+                        <MobileList hasSelection={checkedIndices.size > 0}>
+                            {filter && (
+                                <p style={{ margin: "0 0 0.25rem", fontSize: "0.8rem", color: C.inkMuted }}>
+                                    {filteredIndexed.length}명 표시 중 (전체 {rows.length}명)
+                                </p>
                             )}
-                        </div>
-                        <EditHint>셀을 클릭하면 직접 수정할 수 있습니다</EditHint>
-                        <div ref={tableContainerRef} style={{ overflowX: "auto", overflowY: "auto", maxHeight: "520px" }}>
-                            <Table>
-                                <thead>
-                                    <tr>
-                                        <CheckTh>
-                                            <input
+                            <MobileSelectAllRow>
+                                <MobileCheckbox
+                                    type="checkbox"
+                                    checked={allVisibleChecked}
+                                    ref={(el) => { if (el) el.indeterminate = !allVisibleChecked && someVisibleChecked; }}
+                                    onChange={() => toggleAllVisible(visibleOrigIndices)}
+                                    aria-label="전체 선택"
+                                />
+                                <span style={{ color: C.inkMuted, fontSize: "0.85rem" }}>전체 선택</span>
+                                {checkedIndices.size > 0 && (
+                                    <span style={{ marginLeft: "auto", color: C.accent, fontWeight: 600, fontSize: "0.85rem" }}>
+                                        {checkedIndices.size}명 선택됨
+                                    </span>
+                                )}
+                            </MobileSelectAllRow>
+                            {filteredIndexed.map(({ row, origIdx }) => {
+                                const isCancelled = row._rid ? cancelledRids.has(row._rid) : false;
+                                const isPaid = row._rid ? paidRids.has(row._rid) : false;
+                                const isChecked = checkedIndices.has(origIdx);
+                                const name = nameColKey ? (row[nameColKey] ?? "") : "";
+                                const email = emailColKey ? (row[emailColKey] ?? "") : "";
+                                const timestamp = row[displayColumns.find(c => TIMESTAMP_KEYS.includes(c.key.toLowerCase()))?.key ?? ""] ?? "";
+                                return (
+                                    <MobileCard key={origIdx} cancelled={isCancelled} checked={isChecked}>
+                                        <MobileCardTop>
+                                            <MobileCheckbox
                                                 type="checkbox"
-                                                checked={allVisibleChecked}
-                                                ref={(el) => { if (el) el.indeterminate = !allVisibleChecked && someVisibleChecked; }}
-                                                onChange={() => toggleAllVisible(visibleOrigIndices)}
-                                                aria-label="전체 선택"
+                                                checked={isChecked}
+                                                onChange={() => toggleRow(origIdx)}
+                                                disabled={isCancelled}
+                                                onClick={(e) => e.stopPropagation()}
+                                                aria-label={`${name || "참가자"} 선택`}
                                             />
-                                        </CheckTh>
-                                        {displayColumns.map(({ key, label }) => <th key={key}>{label}</th>)}
-                                        <th style={{ whiteSpace: "nowrap" }}>입금</th>
-                                        <th style={{ whiteSpace: "nowrap" }}>발송 상태</th>
-                                        <th style={{ whiteSpace: "nowrap" }}></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {rowVirtualizer.getVirtualItems().length > 0 && (
-                                        <tr style={{ height: `${rowVirtualizer.getVirtualItems()[0].start}px` }}>
-                                            <td colSpan={displayColumns.length + 4} style={{ padding: 0, border: "none" }} />
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <MobileCardName style={{ textDecoration: isCancelled ? "line-through" : "none" }}>
+                                                    {name || `참가자 ${origIdx + 1}`}
+                                                </MobileCardName>
+                                                <MobileCardEmail>{email || "이메일 없음"}</MobileCardEmail>
+                                            </div>
+                                            <DeliveryBadge
+                                                info={emailColKey ? deliveryMap[row[emailColKey]?.trim()] : undefined}
+                                            />
+                                        </MobileCardTop>
+                                        {timestamp && (
+                                            <MobileCardMeta>{timestamp}</MobileCardMeta>
+                                        )}
+                                        <MobileCardActions>
+                                            <MobilePaidBtn
+                                                paid={isPaid}
+                                                onClick={() => handlePaymentToggle(origIdx)}
+                                                disabled={isCancelled}
+                                                title={isPaid ? "입금 취소" : "입금 확인"}
+                                            >
+                                                {isPaid ? "입금 ✓" : "미입금"}
+                                            </MobilePaidBtn>
+                                            <MobileCancelBtn
+                                                cancelled={isCancelled}
+                                                onClick={() => handleCancelToggle(origIdx)}
+                                                title={isCancelled ? "참여 복원" : "참여 취소"}
+                                            >
+                                                {isCancelled ? "재참여" : "참여 취소"}
+                                            </MobileCancelBtn>
+                                        </MobileCardActions>
+                                    </MobileCard>
+                                );
+                            })}
+                        </MobileList>
+
+                        {/* ── 데스크톱 테이블 (>640px) ── */}
+                        <DesktopTable>
+                            <div ref={tableContainerRef} style={{ overflowX: "auto", overflowY: "auto", maxHeight: "520px" }}>
+                                <Table>
+                                    <thead>
+                                        <tr>
+                                            <CheckTh>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={allVisibleChecked}
+                                                    ref={(el) => { if (el) el.indeterminate = !allVisibleChecked && someVisibleChecked; }}
+                                                    onChange={() => toggleAllVisible(visibleOrigIndices)}
+                                                    aria-label="전체 선택"
+                                                />
+                                            </CheckTh>
+                                            {displayColumns.map(({ key, label }) => <th key={key}>{label}</th>)}
+                                            <th style={{ whiteSpace: "nowrap" }}>입금</th>
+                                            <th style={{ whiteSpace: "nowrap" }}>발송 상태</th>
+                                            <th style={{ whiteSpace: "nowrap" }}></th>
                                         </tr>
-                                    )}
-                                    {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                                        const { row, origIdx } = filteredIndexed[virtualRow.index];
-                                        const isCancelled = row._rid ? cancelledRids.has(row._rid) : false;
-                                        return (
-                                            <tr key={origIdx} style={{ opacity: isCancelled ? 0.5 : 1 }}>
-                                                <CheckTd onClick={(e) => e.stopPropagation()}>
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={checkedIndices.has(origIdx)}
-                                                        onChange={() => toggleRow(origIdx)}
-                                                        disabled={isCancelled}
-                                                        aria-label={`행 ${origIdx + 1} 선택`}
-                                                    />
-                                                </CheckTd>
-                                                {displayColumns.map(({ key }) => {
-                                                    const isEditing = editingCell?.rowIndex === origIdx && editingCell?.col === key;
-                                                    return (
-                                                        <td
-                                                            key={key}
-                                                            onClick={() => { if (!isEditing && !isCancelled) startEdit(origIdx, key); }}
-                                                            style={{
-                                                                cursor: isCancelled ? "default" : "pointer",
-                                                                minWidth: "80px",
-                                                                textDecoration: isCancelled ? "line-through" : "none",
-                                                                color: isCancelled ? C.inkMuted : undefined,
-                                                            }}
-                                                        >
-                                                            {isEditing ? (
-                                                                <CellInput
-                                                                    autoFocus
-                                                                    value={editValue}
-                                                                    onChange={(e) => setEditValue(e.target.value)}
-                                                                    onKeyDown={(e) => {
-                                                                        if (e.key === "Enter") handleCellSave(origIdx, key, editValue);
-                                                                        if (e.key === "Escape") setEditingCell(null);
-                                                                    }}
-                                                                    onBlur={() => handleCellSave(origIdx, key, editValue)}
-                                                                />
-                                                            ) : (
-                                                                row[key] ?? "—"
-                                                            )}
-                                                        </td>
-                                                    );
-                                                })}
-                                                <td style={{ whiteSpace: "nowrap" }} onClick={(e) => e.stopPropagation()}>
-                                                    {(() => {
-                                                        const isPaid = row._rid ? paidRids.has(row._rid) : false;
-                                                        return (
-                                                            <PaidBtn
-                                                                paid={isPaid}
-                                                                onClick={() => handlePaymentToggle(origIdx)}
-                                                                title={isPaid ? "입금 취소" : "입금 확인"}
-                                                                disabled={isCancelled}
-                                                            >
-                                                                {isPaid ? "입금 ✓" : "미입금"}
-                                                            </PaidBtn>
-                                                        );
-                                                    })()}
-                                                </td>
-                                                <td style={{ whiteSpace: "nowrap" }}>
-                                                    <DeliveryBadge
-                                                        info={emailColKey ? deliveryMap[row[emailColKey]?.trim()] : undefined}
-                                                    />
-                                                </td>
-                                                <td style={{ whiteSpace: "nowrap", paddingRight: "8px" }} onClick={(e) => e.stopPropagation()}>
-                                                    <CancelBtn
-                                                        cancelled={isCancelled}
-                                                        onClick={() => handleCancelToggle(origIdx)}
-                                                        title={isCancelled ? "참여 복원" : "참여 취소"}
-                                                    >
-                                                        {isCancelled ? "재참여" : "참여 취소"}
-                                                    </CancelBtn>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                    {rowVirtualizer.getVirtualItems().length > 0 && (() => {
-                                        const last = rowVirtualizer.getVirtualItems().at(-1)!;
-                                        const paddingBottom = rowVirtualizer.getTotalSize() - last.end;
-                                        return paddingBottom > 0 ? (
-                                            <tr style={{ height: `${paddingBottom}px` }}>
+                                    </thead>
+                                    <tbody>
+                                        {rowVirtualizer.getVirtualItems().length > 0 && (
+                                            <tr style={{ height: `${rowVirtualizer.getVirtualItems()[0].start}px` }}>
                                                 <td colSpan={displayColumns.length + 4} style={{ padding: 0, border: "none" }} />
                                             </tr>
-                                        ) : null;
-                                    })()}
-                                </tbody>
-                            </Table>
-                        </div>
+                                        )}
+                                        {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                                            const { row, origIdx } = filteredIndexed[virtualRow.index];
+                                            const isCancelled = row._rid ? cancelledRids.has(row._rid) : false;
+                                            return (
+                                                <tr key={origIdx} style={{ opacity: isCancelled ? 0.5 : 1 }}>
+                                                    <CheckTd onClick={(e) => e.stopPropagation()}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={checkedIndices.has(origIdx)}
+                                                            onChange={() => toggleRow(origIdx)}
+                                                            disabled={isCancelled}
+                                                            aria-label={`행 ${origIdx + 1} 선택`}
+                                                        />
+                                                    </CheckTd>
+                                                    {displayColumns.map(({ key }) => {
+                                                        const isEditing = editingCell?.rowIndex === origIdx && editingCell?.col === key;
+                                                        return (
+                                                            <td
+                                                                key={key}
+                                                                onClick={() => { if (!isEditing && !isCancelled) startEdit(origIdx, key); }}
+                                                                style={{
+                                                                    cursor: isCancelled ? "default" : "pointer",
+                                                                    minWidth: "80px",
+                                                                    textDecoration: isCancelled ? "line-through" : "none",
+                                                                    color: isCancelled ? C.inkMuted : undefined,
+                                                                }}
+                                                            >
+                                                                {isEditing ? (
+                                                                    <CellInput
+                                                                        autoFocus
+                                                                        value={editValue}
+                                                                        onChange={(e) => setEditValue(e.target.value)}
+                                                                        onKeyDown={(e) => {
+                                                                            if (e.key === "Enter") handleCellSave(origIdx, key, editValue);
+                                                                            if (e.key === "Escape") setEditingCell(null);
+                                                                        }}
+                                                                        onBlur={() => handleCellSave(origIdx, key, editValue)}
+                                                                    />
+                                                                ) : (
+                                                                    row[key] ?? "—"
+                                                                )}
+                                                            </td>
+                                                        );
+                                                    })}
+                                                    <td style={{ whiteSpace: "nowrap" }} onClick={(e) => e.stopPropagation()}>
+                                                        {(() => {
+                                                            const isPaid = row._rid ? paidRids.has(row._rid) : false;
+                                                            return (
+                                                                <PaidBtn
+                                                                    paid={isPaid}
+                                                                    onClick={() => handlePaymentToggle(origIdx)}
+                                                                    title={isPaid ? "입금 취소" : "입금 확인"}
+                                                                    disabled={isCancelled}
+                                                                >
+                                                                    {isPaid ? "입금 ✓" : "미입금"}
+                                                                </PaidBtn>
+                                                            );
+                                                        })()}
+                                                    </td>
+                                                    <td style={{ whiteSpace: "nowrap" }}>
+                                                        <DeliveryBadge
+                                                            info={emailColKey ? deliveryMap[row[emailColKey]?.trim()] : undefined}
+                                                        />
+                                                    </td>
+                                                    <td style={{ whiteSpace: "nowrap", paddingRight: "8px" }} onClick={(e) => e.stopPropagation()}>
+                                                        <CancelBtn
+                                                            cancelled={isCancelled}
+                                                            onClick={() => handleCancelToggle(origIdx)}
+                                                            title={isCancelled ? "참여 복원" : "참여 취소"}
+                                                        >
+                                                            {isCancelled ? "재참여" : "참여 취소"}
+                                                        </CancelBtn>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                        {rowVirtualizer.getVirtualItems().length > 0 && (() => {
+                                            const last = rowVirtualizer.getVirtualItems().at(-1)!;
+                                            const paddingBottom = rowVirtualizer.getTotalSize() - last.end;
+                                            return paddingBottom > 0 ? (
+                                                <tr style={{ height: `${paddingBottom}px` }}>
+                                                    <td colSpan={displayColumns.length + 4} style={{ padding: 0, border: "none" }} />
+                                                </tr>
+                                            ) : null;
+                                        })()}
+                                    </tbody>
+                                </Table>
+                            </div>
+                        </DesktopTable>
                     </>
                 )}
             </Card>

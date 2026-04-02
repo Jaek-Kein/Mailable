@@ -36,7 +36,8 @@
       "Bash(grep -n \"pendingRowIds\\\\|idempotency\" /z/programming/event-auto-mailing/mailable/src/app/events/[id]/page.tsx)",
       "Bash(grep '\"\"zod\"\"' package.json)",
       "Bash(node -e \"const {z} = require\\(''zod''\\); const s = z.record\\(z.string\\(\\).nullable\\(\\)\\); console.log\\(s.parse\\({''a'': ''x'', ''b'': null}\\)\\)\")",
-      "Bash(node -e \"const {z} = require\\(''zod''\\); const s = z.record\\(z.string\\(\\), z.string\\(\\).nullable\\(\\)\\); console.log\\(s.parse\\({''a'': ''x'', ''b'': null}\\)\\)\")"
+      "Bash(node -e \"const {z} = require\\(''zod''\\); const s = z.record\\(z.string\\(\\), z.string\\(\\).nullable\\(\\)\\); console.log\\(s.parse\\({''a'': ''x'', ''b'': null}\\)\\)\")",
+      "Bash(npx next:*)"
     ],
     "additionalDirectories": [
       "z:\\programming\\event-auto-mailing\\mailable\\src\\app\\api\\events\\[id]",
