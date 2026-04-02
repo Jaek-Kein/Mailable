@@ -957,11 +957,14 @@ const AttendanceTab = memo(function AttendanceTab({ eventId, rows, emailColKey, 
         return () => window.removeEventListener("beforeunload", handleBeforeUnload);
     }, [eventId]);
 
-    // 입금자만 표시
-    const paidFilteredRows = useMemo(
-        () => rows.map((r, i) => ({ row: r, i })).filter(({ row }) => row._rid && paidRids.has(row._rid)),
-        [rows, paidRids]
-    );
+    // 입금자만 표시, 기본 이름순 정렬 [A-Z, ㄱ-ㅎ]
+    const paidFilteredRows = useMemo(() => {
+        const arr = rows.map((r, i) => ({ row: r, i })).filter(({ row }) => row._rid && paidRids.has(row._rid));
+        if (nameColKey) {
+            arr.sort((a, b) => (a.row[nameColKey] ?? "").localeCompare(b.row[nameColKey] ?? "", "ko"));
+        }
+        return arr;
+    }, [rows, paidRids, nameColKey]);
 
     const filtered = useMemo(() => {
         if (!filter.trim()) return paidFilteredRows;
@@ -1239,6 +1242,7 @@ export default function EventDetailPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [filter, setFilter] = useState("");
+    const [sortBy, setSortBy] = useState<{ key: "name" | "timestamp" | null; dir: "asc" | "desc" }>({ key: null, dir: "desc" });
     const [deliveryMap, setDeliveryMap] = useState<Record<string, { status: string; sentAt: string | null; openedAt: string | null }>>({});
 
     const [localRows, setLocalRows] = useState<Record<string, string>[]>([]);
@@ -1320,8 +1324,10 @@ export default function EventDetailPage() {
     const displayColumns = useMemo(() => getDisplayColumns(allColumns), [allColumns]);
     const emailColKey = useMemo(() => detectCol(EMAIL_KEYS, allColumns), [allColumns]);
     const nameColKey = useMemo(() => detectCol(NAME_KEYS, allColumns), [allColumns]);
+    const timestampColKey = useMemo(() => displayColumns.find(c => TIMESTAMP_KEYS.includes(c.key.toLowerCase()))?.key ?? null, [displayColumns]);
+
     const filteredIndexed = useMemo(() => {
-        return localRows
+        const filtered = localRows
             .map((r, i) => ({ row: r, origIdx: i }))
             .filter(({ row }) => {
                 const isCancelled = row._rid ? cancelledRids.has(row._rid) : false;
@@ -1329,7 +1335,32 @@ export default function EventDetailPage() {
                 if (!filter.trim()) return true;
                 return displayColumns.some(({ key }) => row[key]?.toLowerCase().includes(filter.toLowerCase()));
             });
-    }, [localRows, filter, displayColumns, cancelledRids, showCancelled]);
+
+        if (sortBy.key === "name" && nameColKey) {
+            filtered.sort((a, b) => {
+                const cmp = (a.row[nameColKey] ?? "").localeCompare(b.row[nameColKey] ?? "", "ko");
+                return sortBy.dir === "asc" ? cmp : -cmp;
+            });
+        } else if (sortBy.key === "timestamp" && timestampColKey) {
+            const parseTs = (s: string) => {
+                // "2025. 2. 28 오전 11:13:10" 형태 파싱
+                const m = s.match(/(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})\s*(오전|오후)\s*(\d{1,2}):(\d{2}):(\d{2})/);
+                if (m) {
+                    let h = parseInt(m[5], 10);
+                    if (m[4] === "오후" && h !== 12) h += 12;
+                    if (m[4] === "오전" && h === 12) h = 0;
+                    return new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]), h, parseInt(m[6]), parseInt(m[7])).getTime();
+                }
+                return new Date(s).getTime() || 0;
+            };
+            filtered.sort((a, b) => {
+                const cmp = parseTs(a.row[timestampColKey] ?? "") - parseTs(b.row[timestampColKey] ?? "");
+                return sortBy.dir === "asc" ? cmp : -cmp;
+            });
+        }
+
+        return filtered;
+    }, [localRows, filter, displayColumns, cancelledRids, showCancelled, sortBy, nameColKey, timestampColKey]);
 
     const tableContainerRef = useRef<HTMLDivElement>(null);
     const rowVirtualizer = useVirtualizer({
@@ -1654,6 +1685,24 @@ export default function EventDetailPage() {
                                 style={{ width: "100%", fontSize: "1rem" }}
                             />
                             <MobileToolbarRow>
+                                <GhostBtn
+                                    onClick={() => setSortBy({ key: null, dir: "desc" })}
+                                    style={{ fontSize: "0.8rem", fontWeight: sortBy.key === null ? 700 : 400, opacity: sortBy.key === null ? 1 : 0.6 }}
+                                >기본</GhostBtn>
+                                {nameColKey && (
+                                    <GhostBtn
+                                        onClick={() => setSortBy((prev) => prev.key === "name" ? { key: "name", dir: prev.dir === "desc" ? "asc" : "desc" } : { key: "name", dir: "desc" })}
+                                        style={{ fontSize: "0.8rem", fontWeight: sortBy.key === "name" ? 700 : 400, opacity: sortBy.key === "name" ? 1 : 0.6 }}
+                                    >이름순 {sortBy.key === "name" ? (sortBy.dir === "desc" ? "▼" : "▲") : ""}</GhostBtn>
+                                )}
+                                {timestampColKey && (
+                                    <GhostBtn
+                                        onClick={() => setSortBy((prev) => prev.key === "timestamp" ? { key: "timestamp", dir: prev.dir === "desc" ? "asc" : "desc" } : { key: "timestamp", dir: "desc" })}
+                                        style={{ fontSize: "0.8rem", fontWeight: sortBy.key === "timestamp" ? 700 : 400, opacity: sortBy.key === "timestamp" ? 1 : 0.6 }}
+                                    >시간순 {sortBy.key === "timestamp" ? (sortBy.dir === "desc" ? "▼" : "▲") : ""}</GhostBtn>
+                                )}
+                            </MobileToolbarRow>
+                            <MobileToolbarRow>
                                 {cancelledRids.size > 0 && (
                                     <GhostBtn onClick={() => setShowCancelled((v) => !v)} style={{ fontSize: "0.8rem", flex: 1 }}>
                                         {showCancelled ? `취소자 숨기기 (${cancelledRids.size})` : `취소자 보기 (${cancelledRids.size})`}
@@ -1743,7 +1792,7 @@ export default function EventDetailPage() {
                                 const isChecked = checkedIndices.has(origIdx);
                                 const name = nameColKey ? (row[nameColKey] ?? "") : "";
                                 const email = emailColKey ? (row[emailColKey] ?? "") : "";
-                                const timestamp = row[displayColumns.find(c => TIMESTAMP_KEYS.includes(c.key.toLowerCase()))?.key ?? ""] ?? "";
+                                const timestamp = timestampColKey ? (row[timestampColKey] ?? "") : "";
                                 return (
                                     <MobileCard key={origIdx} cancelled={isCancelled} checked={isChecked} onClick={() => !isCancelled && toggleRow(origIdx)}>
                                         <MobileCardTop>
@@ -1805,7 +1854,24 @@ export default function EventDetailPage() {
                                                     aria-label="전체 선택"
                                                 />
                                             </CheckTh>
-                                            {displayColumns.map(({ key, label }) => <th key={key}>{label}</th>)}
+                                            {displayColumns.map(({ key, label }) => {
+                                                const isSortableKey = (nameColKey && key === nameColKey) ? "name" : (timestampColKey && key === timestampColKey) ? "timestamp" : null;
+                                                const isActive = isSortableKey && sortBy.key === isSortableKey;
+                                                return isSortableKey ? (
+                                                    <th
+                                                        key={key}
+                                                        onClick={() => setSortBy((prev) => prev.key === isSortableKey ? { key: isSortableKey, dir: prev.dir === "desc" ? "asc" : "desc" } : { key: isSortableKey, dir: "desc" })}
+                                                        style={{ cursor: "pointer", userSelect: "none", whiteSpace: "nowrap" }}
+                                                    >
+                                                        {label}
+                                                        <span style={{ marginLeft: "0.3rem", fontSize: "0.7rem", opacity: isActive ? 1 : 0.3 }}>
+                                                            {isActive ? (sortBy.dir === "desc" ? "▼" : "▲") : "▼"}
+                                                        </span>
+                                                    </th>
+                                                ) : (
+                                                    <th key={key}>{label}</th>
+                                                );
+                                            })}
                                             <th style={{ whiteSpace: "nowrap" }}>입금</th>
                                             <th style={{ whiteSpace: "nowrap" }}>발송 상태</th>
                                             <th style={{ whiteSpace: "nowrap" }}></th>

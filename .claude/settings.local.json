@@ -37,7 +37,10 @@
       "Bash(grep '\"\"zod\"\"' package.json)",
       "Bash(node -e \"const {z} = require\\(''zod''\\); const s = z.record\\(z.string\\(\\).nullable\\(\\)\\); console.log\\(s.parse\\({''a'': ''x'', ''b'': null}\\)\\)\")",
       "Bash(node -e \"const {z} = require\\(''zod''\\); const s = z.record\\(z.string\\(\\), z.string\\(\\).nullable\\(\\)\\); console.log\\(s.parse\\({''a'': ''x'', ''b'': null}\\)\\)\")",
-      "Bash(npx next:*)"
+      "Bash(npx next:*)",
+      "Bash(grep -n \"sort\\\\|Sort\\\\|order\\\\|Order\" /z/programming/event-auto-mailing/mailable/src/app/events/[id]/page.tsx)",
+      "Bash(grep -n \"filter\\\\|Filter\\\\|displayColumns\\\\|checkedIndices\" /z/programming/event-auto-mailing/mailable/src/app/events/[id]/page.tsx)",
+      "Bash(grep -n \"getDisplayColumns\\\\|TIMESTAMP_KEYS\" /z/programming/event-auto-mailing/mailable/src/app/events/[id]/page.tsx)"
     ],
     "additionalDirectories": [
       "z:\\programming\\event-auto-mailing\\mailable\\src\\app\\api\\events\\[id]",
