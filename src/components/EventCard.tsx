@@ -51,6 +51,10 @@ const Poster = styled.div<{ src?: string | null }>`
     color: #b0a898;
     font-size: 0.8rem;
     letter-spacing: 0.5px;
+
+    @media (max-width: 480px) {
+        height: 140px;
+    }
 `;
 
 const Body = styled.div`
@@ -122,6 +126,18 @@ const Toolbar = styled.div`
         font-size: 0.78rem;
         cursor: pointer;
         transition: background 0.15s;
+        min-height: 36px;
+        min-width: 44px;
+    }
+
+    @media (max-width: 480px) {
+        top: 10px;
+        right: 10px;
+
+        button {
+            padding: 7px 12px;
+            font-size: 0.8rem;
+        }
     }
 `;
 
@@ -139,10 +155,17 @@ const DeleteBtn = styled.button`
     font-size: 0.78rem;
     cursor: pointer;
     color: ${({ theme }) => theme.color.danger};
+    min-height: 36px;
+    min-width: 44px;
 
     &:hover {
         background: #fef2f2 !important;
         border-color: ${({ theme }) => theme.color.danger} !important;
+    }
+
+    @media (max-width: 480px) {
+        padding: 7px 12px;
+        font-size: 0.8rem;
     }
 `;
 
@@ -186,6 +209,16 @@ const DialogActions = styled.div`
     display: flex;
     justify-content: flex-end;
     gap: 0.5rem;
+
+    @media (max-width: 480px) {
+        flex-direction: column-reverse;
+
+        button {
+            width: 100%;
+            padding: 0.65rem 1rem;
+            justify-content: center;
+        }
+    }
 `;
 
 const CancelButton = styled.button`

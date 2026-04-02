@@ -8,6 +8,15 @@ const Card = styled.article`
   border-radius: ${({ theme }) => theme.radius.md};
   box-shadow: ${({ theme }) => theme.shadow.card};
   padding: 1.1rem 1.25rem;
+
+  @media (max-width: 480px) {
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-direction: row-reverse;
+    gap: 0.5rem;
+  }
 `;
 
 const Label = styled.p`
@@ -17,6 +26,11 @@ const Label = styled.p`
   color: ${({ theme }) => theme.color.muted};
   margin: 0 0 0.5rem;
   text-transform: uppercase;
+
+  @media (max-width: 480px) {
+    margin: 0;
+    font-size: 0.75rem;
+  }
 `;
 
 const Value = styled.div<{ tone?: 'success' | 'warning' | 'danger' }>`
@@ -28,6 +42,10 @@ const Value = styled.div<{ tone?: 'success' | 'warning' | 'danger' }>`
     tone === 'warning' ? theme.color.warning :
     tone === 'danger'  ? theme.color.danger  :
     theme.color.text};
+
+  @media (max-width: 480px) {
+    font-size: 1.6rem;
+  }
 `;
 
 export default function StatCard(

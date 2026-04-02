@@ -46,6 +46,12 @@ const Page = styled.main`
     padding: 0 1.25rem;
     display: grid;
     gap: 1.5rem;
+
+    @media (max-width: 480px) {
+        margin: 1.25rem auto;
+        padding: 0 1rem;
+        gap: 1.25rem;
+    }
 `;
 
 const Card = styled.section`
@@ -56,6 +62,11 @@ const Card = styled.section`
     display: grid;
     gap: 0.75rem;
     box-shadow: 0 4px 16px rgba(26, 26, 46, 0.06);
+
+    @media (max-width: 480px) {
+        padding: 1.1rem 1rem;
+        border-radius: 10px;
+    }
 `;
 
 const PageTitle = styled.h1`
@@ -64,6 +75,10 @@ const PageTitle = styled.h1`
     font-size: 1.6rem;
     color: ${C.ink};
     letter-spacing: -0.3px;
+
+    @media (max-width: 480px) {
+        font-size: 1.3rem;
+    }
 `;
 
 const MetaRow = styled.div`
@@ -74,6 +89,11 @@ const MetaRow = styled.div`
     color: ${C.inkMuted};
 
     a { color: ${C.accent}; text-decoration: none; &:hover { text-decoration: underline; } }
+
+    @media (max-width: 480px) {
+        gap: 0.5rem 1rem;
+        font-size: 0.8rem;
+    }
 `;
 
 const Badge = styled.span<{ status: "ONGOING" | "CLOSED" }>`
@@ -113,6 +133,15 @@ const Table = styled.table`
     }
     tr:last-child td { border-bottom: none; }
     tr:hover td { background: #faf9f7; }
+
+    @media (max-width: 640px) {
+        min-width: 540px;
+
+        th, td {
+            padding: 8px 10px;
+            font-size: 0.82rem;
+        }
+    }
 `;
 
 const FilterInput = styled.input`
@@ -125,11 +154,18 @@ const FilterInput = styled.input`
     background: ${C.paper};
     color: ${C.ink};
     outline: none;
+    min-height: 40px;
 
     &:focus {
         border-color: ${C.accent};
         box-shadow: 0 0 0 3px ${C.accentLight};
         background: #fff;
+    }
+
+    @media (max-width: 480px) {
+        width: 100%;
+        font-size: 1rem; /* iOS 줌 방지 */
+        box-sizing: border-box;
     }
 `;
 
@@ -151,6 +187,7 @@ const BackButton = styled.button`
     color: ${C.inkSoft};
     width: fit-content;
     transition: background 0.15s;
+    min-height: 36px;
     &:hover { background: ${C.paper}; }
 `;
 
@@ -164,7 +201,14 @@ const GhostBtn = styled.button`
     font-size: 0.82rem;
     cursor: pointer;
     transition: background 0.15s;
+    min-height: 36px;
     &:hover { background: ${C.paper}; }
+
+    @media (max-width: 480px) {
+        min-height: 40px;
+        padding: 8px 14px;
+        font-size: 0.85rem;
+    }
 `;
 
 const PrimaryBtn = styled.button`
@@ -178,10 +222,17 @@ const PrimaryBtn = styled.button`
     font-weight: 500;
     cursor: pointer;
     transition: background 0.15s, transform 0.1s;
+    min-height: 36px;
 
     &:hover { background: #2d2d4a; transform: translateY(-1px); }
     &:active { transform: translateY(0); }
     &:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+    @media (max-width: 480px) {
+        min-height: 40px;
+        padding: 9px 16px;
+        font-size: 0.9rem;
+    }
 `;
 
 const Toolbar = styled.div`
@@ -191,6 +242,12 @@ const Toolbar = styled.div`
     flex-wrap: wrap;
     gap: 0.75rem;
     margin-bottom: 0.5rem;
+
+    @media (max-width: 480px) {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.6rem;
+    }
 `;
 
 const ErrorMessage = styled.div`
@@ -231,11 +288,16 @@ const TemplateInput = styled.input`
     background: ${C.paper};
     color: ${C.ink};
     outline: none;
+    min-height: 44px;
 
     &:focus {
         border-color: ${C.accent};
         box-shadow: 0 0 0 3px ${C.accentLight};
         background: #fff;
+    }
+
+    @media (max-width: 480px) {
+        font-size: 1rem; /* iOS 줌 방지 */
     }
 `;
 
@@ -259,6 +321,10 @@ const TemplateTextarea = styled.textarea`
         box-shadow: 0 0 0 3px ${C.accentLight};
         background: #fff;
     }
+
+    @media (max-width: 480px) {
+        font-size: 1rem; /* iOS 줌 방지 */
+    }
 `;
 
 const PlaceholderHint = styled.p`
@@ -277,6 +343,11 @@ const Overlay = styled.div`
     place-items: center;
     z-index: 50;
     padding: 1rem;
+
+    @media (max-width: 480px) {
+        padding: 0;
+        align-items: flex-end;
+    }
 `;
 
 const Modal = styled.div`
@@ -289,6 +360,14 @@ const Modal = styled.div`
     display: grid;
     gap: 1.25rem;
     box-shadow: 0 16px 48px rgba(26, 26, 46, 0.18);
+
+    @media (max-width: 480px) {
+        border-radius: 20px 20px 0 0;
+        max-width: 100%;
+        padding: 1.5rem 1.25rem 2rem;
+        max-height: 85dvh;
+        overflow-y: auto;
+    }
 `;
 
 const ModalTitle = styled.h2`
@@ -303,6 +382,17 @@ const ModalFooter = styled.div`
     display: flex;
     justify-content: flex-end;
     gap: 0.75rem;
+
+    @media (max-width: 480px) {
+        flex-direction: column-reverse;
+        gap: 0.5rem;
+
+        button {
+            width: 100%;
+            justify-content: center;
+            padding: 0.7rem 1rem;
+        }
+    }
 `;
 
 /* ────────── Tab Bar ────────── */
@@ -311,6 +401,10 @@ const TabBar = styled.div`
     gap: 0;
     border-bottom: 2px solid ${C.border};
     margin-bottom: -1.5rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    &::-webkit-scrollbar { display: none; }
 `;
 
 const Tab = styled.button<{ active: boolean }>`
@@ -327,6 +421,7 @@ const Tab = styled.button<{ active: boolean }>`
     cursor: pointer;
     transition: color 0.15s, border-color 0.15s;
     white-space: nowrap;
+    min-height: 44px;
 
     &:hover { color: ${C.ink}; }
 `;
@@ -362,9 +457,15 @@ const CheckinRow = styled.div<{ checked: boolean }>`
     transition: background 0.15s, border-color 0.15s;
     cursor: pointer;
     user-select: none;
+    min-height: 56px;
 
     &:hover {
         background: ${({ checked }) => checked ? "#dcfce7" : C.paper};
+    }
+
+    @media (max-width: 480px) {
+        gap: 0.75rem;
+        padding: 0.75rem;
     }
 `;
 
@@ -397,6 +498,11 @@ const CheckinEmail = styled.span`
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    min-width: 0;
+
+    @media (max-width: 480px) {
+        font-size: 0.75rem;
+    }
 `;
 
 const CheckinTime = styled.span`

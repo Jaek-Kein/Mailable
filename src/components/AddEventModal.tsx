@@ -45,6 +45,11 @@ const Backdrop = styled.div`
     place-items: center;
     z-index: 100;
     padding: 1rem;
+
+    @media (max-width: 480px) {
+        padding: 0;
+        align-items: flex-end;
+    }
 `;
 
 const Dialog = styled.div`
@@ -57,6 +62,15 @@ const Dialog = styled.div`
     padding: 1.75rem;
     display: grid;
     gap: 1.25rem;
+
+    @media (max-width: 480px) {
+        border-radius: 20px 20px 0 0;
+        max-width: 100%;
+        padding: 1.5rem 1.25rem 2rem;
+        max-height: 92dvh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
 `;
 
 const DialogHeader = styled.div`
@@ -123,6 +137,7 @@ const Input = styled.input`
     background: ${({ theme }) => theme.color.bg};
     outline: none;
     transition: border-color 0.15s, box-shadow 0.15s;
+    min-height: 44px;
 
     &:focus {
         border-color: ${({ theme }) => theme.color.accent};
@@ -131,6 +146,10 @@ const Input = styled.input`
     }
 
     &::placeholder { color: ${({ theme }) => theme.color.muted}; }
+
+    @media (max-width: 480px) {
+        font-size: 1rem; /* 모바일 iOS 줌 방지 (16px 미만 시 자동 줌) */
+    }
 `;
 
 const Hint = styled.p`
@@ -154,6 +173,17 @@ const Footer = styled.div`
     justify-content: flex-end;
     gap: 0.6rem;
     margin-top: 0.25rem;
+
+    @media (max-width: 480px) {
+        flex-direction: column-reverse;
+        gap: 0.5rem;
+
+        button {
+            width: 100%;
+            padding: 0.7rem 1rem;
+            justify-content: center;
+        }
+    }
 `;
 
 const CancelButton = styled.button`

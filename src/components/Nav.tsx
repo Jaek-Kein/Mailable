@@ -15,6 +15,10 @@ const Bar = styled.nav`
   height: 52px;
   display: flex;
   align-items: center;
+
+  @media (max-width: 480px) {
+    padding: 0 1rem;
+  }
 `;
 
 const Wrap = styled.div`
@@ -52,12 +56,22 @@ const Menu = styled.ul`
     color: ${({ theme }) => theme.color.sub};
     text-decoration: none;
     transition: background 0.15s, color 0.15s;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
   }
 
   a[aria-current='page'],
   a:hover {
     background: ${({ theme }) => theme.color.bg};
     color: ${({ theme }) => theme.color.text};
+  }
+
+  @media (max-width: 480px) {
+    a {
+      font-size: 0.8rem;
+      padding: 0.3rem 0.5rem;
+    }
   }
 `;
 
@@ -70,6 +84,14 @@ const Actions = styled.div`
 const UserInfo = styled.span`
   font-size: 0.85rem;
   color: ${({ theme }) => theme.color.muted};
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  @media (max-width: 480px) {
+    display: none;
+  }
 `;
 
 const NavBtn = styled.button`
@@ -82,10 +104,17 @@ const NavBtn = styled.button`
   font-size: 0.85rem;
   color: ${({ theme }) => theme.color.sub};
   transition: background 0.15s, color 0.15s;
+  min-height: 36px;
+  min-width: 44px;
 
   &:hover {
     background: ${({ theme }) => theme.color.bg};
     color: ${({ theme }) => theme.color.text};
+  }
+
+  @media (max-width: 480px) {
+    font-size: 0.8rem;
+    padding: 0.35rem 0.65rem;
   }
 `;
 

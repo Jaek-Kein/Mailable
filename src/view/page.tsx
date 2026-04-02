@@ -13,6 +13,12 @@ const Main = styled.main`
     padding: 0 1.25rem;
     display: grid;
     gap: 1.5rem;
+
+    @media (max-width: 480px) {
+        margin: 1.25rem auto;
+        padding: 0 1rem;
+        gap: 1.25rem;
+    }
 `;
 
 const Section = styled.section`
@@ -35,6 +41,11 @@ const PageHeader = styled.header`
     align-items: flex-start;
     justify-content: space-between;
     gap: 1rem;
+
+    @media (max-width: 480px) {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
 `;
 
 const HeadingGroup = styled.div`
@@ -48,6 +59,10 @@ const PageTitle = styled.h1`
     color: ${({ theme }) => theme.color.text};
     margin: 0;
     letter-spacing: -0.3px;
+
+    @media (max-width: 480px) {
+        font-size: 1.5rem;
+    }
 `;
 
 const PageSub = styled.p`
@@ -76,6 +91,7 @@ const AddButton = styled.button`
     cursor: pointer;
     white-space: nowrap;
     transition: background 0.15s, transform 0.1s;
+    min-height: 40px;
 
     &:hover {
         background: #2d2d4a;
@@ -83,6 +99,12 @@ const AddButton = styled.button`
     }
 
     &:active { transform: translateY(0); }
+
+    @media (max-width: 480px) {
+        width: 100%;
+        padding: 0.65rem 1.1rem;
+        border-radius: 10px;
+    }
 `;
 
 const LoadingMessage = styled.div`
@@ -115,6 +137,10 @@ const TabRow = styled.div`
     display: flex;
     gap: 0.25rem;
     border-bottom: 1px solid ${({ theme }) => theme.color.border};
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    &::-webkit-scrollbar { display: none; }
 `;
 
 const Tab = styled.button<{ active: boolean }>`
@@ -129,6 +155,8 @@ const Tab = styled.button<{ active: boolean }>`
     margin-bottom: -1px;
     cursor: pointer;
     transition: color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+    min-height: 40px;
 
     &:hover {
         color: ${({ theme }) => theme.color.text};
