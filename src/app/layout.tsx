@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import { DM_Serif_Display, DM_Sans } from 'next/font/google';
+import { Analytics } from '@vercel/analytics/next';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import Providers from './Providers';
 import Nav from '@/src/components/Nav';
 
@@ -33,6 +35,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Nav />
           {children}
         </Providers>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

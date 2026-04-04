@@ -14,7 +14,10 @@
       "Read(//c/Users/KEIN/.claude/projects/z--programming-event-auto-mailing-mailable/memory/**)",
       "Bash(pnpm build:*)",
       "Bash(node -e \"const b = require\\(''z:/programming/event-auto-mailing/mailable/node_modules/@vercel/blob''\\); console.log\\(Object.keys\\(b\\).includes\\(''handleUpload''\\)\\)\")",
-      "Bash(node -e \"const b = require\\(''z:/programming/event-auto-mailing/mailable/node_modules/@vercel/blob/client''\\); console.log\\(Object.keys\\(b\\).filter\\(k => k.includes\\(''handle''\\) || k.includes\\(''Upload''\\)\\)\\)\")"
+      "Bash(node -e \"const b = require\\(''z:/programming/event-auto-mailing/mailable/node_modules/@vercel/blob/client''\\); console.log\\(Object.keys\\(b\\).filter\\(k => k.includes\\(''handle''\\) || k.includes\\(''Upload''\\)\\)\\)\")",
+      "Bash(npm install:*)",
+      "Bash(npm --version)",
+      "Read(//c/Users/KEIN/AppData/Local/npm-cache/_logs/**)"
     ]
   }
 }
