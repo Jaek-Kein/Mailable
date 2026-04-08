@@ -925,11 +925,15 @@ interface AttendanceTabProps {
     checkinMap: Record<string, string | null>;
     paidRids: Set<string>;
     onCheckinMapChange: (map: Record<string, string | null>) => void;
+    onWalkInAdded: (row: Record<string, string>, paidRids: string[]) => void;
 }
 
-const AttendanceTab = memo(function AttendanceTab({ eventId, rows, emailColKey, nameColKey, checkinMap, paidRids, onCheckinMapChange }: AttendanceTabProps) {
+const AttendanceTab = memo(function AttendanceTab({ eventId, rows, emailColKey, nameColKey, checkinMap, paidRids, onCheckinMapChange, onWalkInAdded }: AttendanceTabProps) {
     const [filter, setFilter] = useState("");
     const [resetting, setResetting] = useState(false);
+    const [walkInName, setWalkInName] = useState("");
+    const [walkInAdding, setWalkInAdding] = useState(false);
+    const [showWalkInInput, setShowWalkInInput] = useState(false);
     const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const pendingMapRef = useRef<Record<string, string | null> | null>(null);
 
@@ -1014,8 +1018,54 @@ const AttendanceTab = memo(function AttendanceTab({ eventId, rows, emailColKey, 
         setResetting(false);
     }
 
+    async function addWalkIn() {
+        const name = walkInName.trim();
+        if (!name || walkInAdding) return;
+        setWalkInAdding(true);
+        try {
+            const res = await fetch(`/api/events/${eventId}/walk-in`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name }),
+            });
+            const data = await res.json();
+            if (data.ok) {
+                onWalkInAdded(data.row, data.paidRids);
+                setWalkInName("");
+                setShowWalkInInput(false);
+            }
+        } finally {
+            setWalkInAdding(false);
+        }
+    }
+
     if (rows.length === 0) {
-        return <Empty>수집된 참가자 데이터가 없습니다. 먼저 Sheets URL로 데이터를 수집하세요.</Empty>;
+        return (
+            <div style={{ display: "grid", gap: "1rem" }}>
+                <Empty>수집된 참가자 데이터가 없습니다. 먼저 Sheets URL로 데이터를 수집하세요.</Empty>
+                <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                    {showWalkInInput ? (
+                        <>
+                            <FilterInput
+                                type="text"
+                                placeholder="현장예매 참가자 이름"
+                                value={walkInName}
+                                onChange={(e) => setWalkInName(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === "Enter") addWalkIn(); if (e.key === "Escape") { setShowWalkInInput(false); setWalkInName(""); } }}
+                                autoFocus
+                                style={{ width: 200 }}
+                            />
+                            <GhostBtn onClick={addWalkIn} disabled={walkInAdding || !walkInName.trim()}>
+                                {walkInAdding ? "추가 중..." : "추가"}
+                            </GhostBtn>
+                            <GhostBtn onClick={() => { setShowWalkInInput(false); setWalkInName(""); }}>취소</GhostBtn>
+                        </>
+                    ) : (
+                        <GhostBtn onClick={() => setShowWalkInInput(true)}>+ 현장예매 추가</GhostBtn>
+                    )}
+                </div>
+            </div>
+        );
     }
 
     return (
@@ -1053,8 +1103,27 @@ const AttendanceTab = memo(function AttendanceTab({ eventId, rows, emailColKey, 
                     placeholder="이름 또는 이메일 검색..."
                     value={filter}
                     onChange={(e) => setFilter(e.target.value)}
-                    style={{ width: 240 }}
+                    style={{ width: 200 }}
                 />
+                {showWalkInInput ? (
+                    <>
+                        <FilterInput
+                            type="text"
+                            placeholder="현장예매 참가자 이름"
+                            value={walkInName}
+                            onChange={(e) => setWalkInName(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") addWalkIn(); if (e.key === "Escape") { setShowWalkInInput(false); setWalkInName(""); } }}
+                            autoFocus
+                            style={{ width: 180 }}
+                        />
+                        <GhostBtn onClick={addWalkIn} disabled={walkInAdding || !walkInName.trim()}>
+                            {walkInAdding ? "추가 중..." : "추가"}
+                        </GhostBtn>
+                        <GhostBtn onClick={() => { setShowWalkInInput(false); setWalkInName(""); }}>취소</GhostBtn>
+                    </>
+                ) : (
+                    <GhostBtn onClick={() => setShowWalkInInput(true)}>+ 현장예매</GhostBtn>
+                )}
                 <GhostBtn onClick={resetAll} disabled={resetting} style={{ marginLeft: "auto" }}>
                     {resetting ? "초기화 중..." : "전체 초기화"}
                 </GhostBtn>
@@ -1460,6 +1529,11 @@ export default function EventDetailPage() {
         }
     }
 
+    function handleWalkInAdded(row: Record<string, string>, newPaidRids: string[]) {
+        setLocalRows((prev) => [...prev, row]);
+        setPaidRids(new Set(newPaidRids));
+    }
+
     async function handleBulkPayment(paid: boolean) {
         const rowIds = Array.from(checkedIndices)
             .map((i) => localRows[i]?._rid)
@@ -1670,6 +1744,7 @@ export default function EventDetailPage() {
                         checkinMap={checkinMap}
                         paidRids={paidRids}
                         onCheckinMapChange={setCheckinMap}
+                        onWalkInAdded={handleWalkInAdded}
                     />
                 ) : rows.length === 0 ? (
                     <Empty>수집된 참가자 데이터가 없습니다. 행사 카드에서 Sheets URL로 데이터를 수집하세요.</Empty>
