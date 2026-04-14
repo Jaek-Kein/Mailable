@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/src/lib/prisma";
 import { auth } from "@/src/lib/auth";
-import { encrypt, decrypt, decryptJson } from "@/src/lib/crypto";
+import { encrypt, decrypt, decryptJson, encryptJson } from "@/src/lib/crypto";
+import { sanitizePayload } from "@/src/lib/sanitizePayload";
 
 const patchSchema = z.object({
   emailSubject: z.string().optional(),
@@ -99,10 +100,29 @@ export async function GET(
       }
     }
 
+    let cleanedPayload = null;
+    if (event.data) {
+      const rawPayload = (decryptJson(event.data.payload as string) ?? {}) as Record<string, unknown>;
+      const sanitized = sanitizePayload(rawPayload);
+      // rows 수나 cancelledRids/paidRids 수가 달라졌으면 DB에 저장
+      const rawAny = rawPayload as { rows?: unknown[]; cancelledRids?: unknown[]; paidRids?: unknown[]; checkinMap?: Record<string, unknown> };
+      const rowsChanged = (rawAny.rows?.length ?? 0) !== sanitized.rows.length;
+      const cancelChanged = (rawAny.cancelledRids?.length ?? 0) !== sanitized.cancelledRids.length;
+      const paidChanged = (rawAny.paidRids?.length ?? 0) !== sanitized.paidRids.length;
+      const checkinChanged = Object.keys(rawAny.checkinMap ?? {}).length !== Object.keys(sanitized.checkinMap).length;
+      if (rowsChanged || cancelChanged || paidChanged || checkinChanged) {
+        await prisma.eventData.update({
+          where: { eventId: id },
+          data: { payload: encryptJson(sanitized), updatedAt: new Date() },
+        });
+      }
+      cleanedPayload = sanitized;
+    }
+
     const eventForResponse = {
       ...event,
       sheetUrl: event.sheetUrl ? decrypt(event.sheetUrl) : null,
-      data: event.data ? { ...event.data, payload: decryptJson(event.data.payload as string) } : null,
+      data: event.data ? { ...event.data, payload: cleanedPayload } : null,
     };
     return NextResponse.json({ ok: true, event: eventForResponse, deliveryMap });
   } catch (e: unknown) {

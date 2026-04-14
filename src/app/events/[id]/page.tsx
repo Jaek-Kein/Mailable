@@ -1389,6 +1389,11 @@ export default function EventDetailPage() {
         return () => controller.abort();
     }, [id]);
 
+    const activeCancelledCount = useMemo(
+        () => localRows.filter(r => r._rid && cancelledRids.has(r._rid)).length,
+        [localRows, cancelledRids]
+    );
+
     const allColumns = useMemo(() => localRows.length > 0 ? Object.keys(localRows[0]) : [], [localRows]);
     const displayColumns = useMemo(() => getDisplayColumns(allColumns), [allColumns]);
     const emailColKey = useMemo(() => detectCol(EMAIL_KEYS, allColumns), [allColumns]);
@@ -1497,6 +1502,7 @@ export default function EventDetailPage() {
 
     async function handlePaymentToggle(origIdx: number) {
         const rowId = localRows[origIdx]?._rid;
+        console.log("[paymentToggle] origIdx:", origIdx, "rowId:", rowId, "row:", localRows[origIdx]);
         if (!rowId || pendingRowIds.has(rowId)) return;
         const isPaid = paidRids.has(rowId);
         const next = !isPaid;
@@ -1567,6 +1573,7 @@ export default function EventDetailPage() {
 
     async function handleCancelToggle(origIdx: number) {
         const rowId = localRows[origIdx]?._rid;
+        console.log("[cancelToggle] origIdx:", origIdx, "rowId:", rowId, "row:", localRows[origIdx]);
         if (!rowId || pendingRowIds.has(rowId)) return;
         const isCancelled = cancelledRids.has(rowId);
         const next = !isCancelled;
@@ -1683,8 +1690,8 @@ export default function EventDetailPage() {
                     <SectionTitle style={{ margin: 0 }}>
                         {activeTab === "checkin" ? "입장 체크" : "참가자 데이터"}{" "}
                         {rows.length > 0 && (
-                            cancelledRids.size > 0
-                                ? `(${rows.length - cancelledRids.size}명 활성 / 전체 ${rows.length}명)`
+                            activeCancelledCount > 0
+                                ? `(${rows.length - activeCancelledCount}명 활성 / 전체 ${rows.length}명)`
                                 : `(${rows.length}명)`
                         )}
                         {event.data && (
@@ -1713,9 +1720,9 @@ export default function EventDetailPage() {
                                     value={filter}
                                     onChange={(e) => setFilter(e.target.value)}
                                 />
-                                {cancelledRids.size > 0 && (
+                                {activeCancelledCount > 0 && (
                                     <GhostBtn onClick={() => setShowCancelled((v) => !v)} style={{ fontSize: "0.8rem" }}>
-                                        {showCancelled ? `취소자 숨기기 (${cancelledRids.size})` : `취소자 보기 (${cancelledRids.size})`}
+                                        {showCancelled ? `취소자 숨기기 (${activeCancelledCount})` : `취소자 보기 (${activeCancelledCount})`}
                                     </GhostBtn>
                                 )}
                                 <GhostBtn onClick={() => exportCsv(localRows, `${event.title}_participants.csv`)}>
@@ -1778,9 +1785,9 @@ export default function EventDetailPage() {
                                 )}
                             </MobileToolbarRow>
                             <MobileToolbarRow>
-                                {cancelledRids.size > 0 && (
+                                {activeCancelledCount > 0 && (
                                     <GhostBtn onClick={() => setShowCancelled((v) => !v)} style={{ fontSize: "0.8rem", flex: 1 }}>
-                                        {showCancelled ? `취소자 숨기기 (${cancelledRids.size})` : `취소자 보기 (${cancelledRids.size})`}
+                                        {showCancelled ? `취소자 숨기기 (${activeCancelledCount})` : `취소자 보기 (${activeCancelledCount})`}
                                     </GhostBtn>
                                 )}
                                 <GhostBtn onClick={() => exportCsv(localRows, `${event.title}_participants.csv`)} style={{ flex: 1 }}>
