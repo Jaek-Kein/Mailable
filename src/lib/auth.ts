@@ -51,6 +51,21 @@ export const authOptions: NextAuthOptions = {
       }
       return session;
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    async signIn({ account }: { account: any }) {
+      if (account?.provider === "google" && account.refresh_token) {
+        await prisma.account.updateMany({
+          where: { providerAccountId: account.providerAccountId, provider: "google" },
+          data: {
+            refresh_token: encrypt(account.refresh_token),
+            access_token: account.access_token ? encrypt(account.access_token) : undefined,
+            id_token: account.id_token ? encrypt(account.id_token) : undefined,
+            expires_at: account.expires_at ?? undefined,
+          },
+        });
+      }
+      return true;
+    },
   },
   pages: {
     signIn: '/login',
