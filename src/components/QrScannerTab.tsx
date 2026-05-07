@@ -236,8 +236,12 @@ export default function QrScannerTab({ eventId, onCheckinMapChange }: Props) {
         }
 
         pushToast(result);
-        setStatus("QR 코드를 카메라에 비춰주세요");
-        processingRef.current = false;
+        setStatus("결과 확인 후 다음 QR을 비춰주세요");
+        // 토스트가 완전히 사라진 뒤(2.75s) 다음 스캔 허용
+        setTimeout(() => {
+          processingRef.current = false;
+          setStatus("QR 코드를 카메라에 비춰주세요");
+        }, 2750);
       })
       .catch(() => {
         setStatus("카메라 접근에 실패했습니다. 권한을 확인해주세요.");
