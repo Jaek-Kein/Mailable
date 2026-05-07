@@ -9,7 +9,8 @@ interface SendMailOptions {
   userId: string; // DB User.id
   to: string;
   subject: string;
-  content: string; // plain text
+  content: string; // plain text (HTML 없을 경우) 또는 plain text 부분
+  htmlContent?: string; // HTML 파트 (있으면 multipart/alternative 발송)
 }
 
 interface SendResult {
@@ -23,7 +24,7 @@ interface SendResult {
  * 첫 로그인 시 access_type=offline + prompt=consent 로 refresh_token이 발급되어야 합니다.
  */
 export async function sendGmail(opts: SendMailOptions): Promise<SendResult> {
-  const { userId, to, subject, content } = opts;
+  const { userId, to, subject, content, htmlContent } = opts;
 
   const account = await prisma.account.findFirst({
     where: { userId, provider: "google" },
@@ -52,16 +53,42 @@ export async function sendGmail(opts: SendMailOptions): Promise<SendResult> {
   // 헤더 인젝션 방지: subject의 줄바꿈 문자 제거
   const safeSubject = subject.replace(/[\r\n]/g, " ");
 
-  // RFC 2822 plain text 메시지 작성
-  const message = [
-    `To: ${to}`,
-    `Subject: =?UTF-8?B?${Buffer.from(safeSubject).toString("base64")}?=`,
-    "MIME-Version: 1.0",
-    "Content-Type: text/plain; charset=UTF-8",
-    "Content-Transfer-Encoding: base64",
-    "",
-    Buffer.from(content).toString("base64"),
-  ].join("\r\n");
+  let message: string;
+  if (htmlContent) {
+    // multipart/alternative: plain text + HTML (QR 인라인 이미지 포함)
+    const boundary = `boundary_${Date.now().toString(36)}`;
+    message = [
+      `To: ${to}`,
+      `Subject: =?UTF-8?B?${Buffer.from(safeSubject).toString("base64")}?=`,
+      "MIME-Version: 1.0",
+      `Content-Type: multipart/alternative; boundary="${boundary}"`,
+      "",
+      `--${boundary}`,
+      "Content-Type: text/plain; charset=UTF-8",
+      "Content-Transfer-Encoding: base64",
+      "",
+      Buffer.from(content).toString("base64"),
+      "",
+      `--${boundary}`,
+      "Content-Type: text/html; charset=UTF-8",
+      "Content-Transfer-Encoding: base64",
+      "",
+      Buffer.from(htmlContent).toString("base64"),
+      "",
+      `--${boundary}--`,
+    ].join("\r\n");
+  } else {
+    // RFC 2822 plain text 메시지 작성 (기존 경로)
+    message = [
+      `To: ${to}`,
+      `Subject: =?UTF-8?B?${Buffer.from(safeSubject).toString("base64")}?=`,
+      "MIME-Version: 1.0",
+      "Content-Type: text/plain; charset=UTF-8",
+      "Content-Transfer-Encoding: base64",
+      "",
+      Buffer.from(content).toString("base64"),
+    ].join("\r\n");
+  }
 
   const encodedMessage = Buffer.from(message)
     .toString("base64")

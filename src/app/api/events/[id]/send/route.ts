@@ -7,6 +7,8 @@ import { sendGmail, renderTemplate } from "@/src/lib/gmail";
 import { decryptJson } from "@/src/lib/crypto";
 import { DeliveryStatus } from "@prisma/client";
 import { findEmailKey, findNameKey } from "@/src/lib/columnDetection";
+import QRCode from "qrcode";
+import { createCheckinToken } from "@/src/lib/checkinToken";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -97,15 +99,35 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         const nameKey = findNameKey(row);
         const recipientName = nameKey ? row[nameKey]?.trim() : undefined;
 
-        const context = { ...row, 행사명: event.title };
+        // QR 코드 생성 ({{qr_image}} 플레이스홀더가 있을 때만)
+        let qrDataUrl = "";
+        const rid = row._rid;
+        if (rid && emailContent.includes("{{qr_image}}")) {
+          const checkinUrl = `${process.env.NEXTAUTH_URL ?? ""}/api/checkin/${createCheckinToken({ eventId, rid })}`;
+          qrDataUrl = await QRCode.toDataURL(checkinUrl, { width: 200, margin: 1 });
+        }
+
+        const context: Record<string, string> = { ...row, 행사명: event.title };
         const subject = renderTemplate(emailSubject, context);
-        const content = renderTemplate(emailContent, context);
+        const plainContent = renderTemplate(emailContent.replace(/\{\{qr_image\}\}/g, ""), context);
+
+        // HTML 버전: {{qr_image}}를 인라인 base64 이미지로 치환
+        const hasQr = !!qrDataUrl;
+        const htmlContent = hasQr
+          ? renderTemplate(
+              emailContent.replace(
+                /\{\{qr_image\}\}/g,
+                `<img src="${qrDataUrl}" alt="QR 체크인" width="200" height="200" style="display:block" />`
+              ),
+              context
+            ).replace(/\n/g, "<br>")
+          : undefined;
 
         const delivery = await prisma.emailDelivery.create({
           data: { campaignId: campaign.id, recipientEmail, recipientName, status: "PENDING" },
         });
 
-        const result = await sendGmail({ userId, to: recipientEmail, subject, content });
+        const result = await sendGmail({ userId, to: recipientEmail, subject, content: plainContent, htmlContent });
 
         const newStatus: DeliveryStatus = result.ok ? "SENT" : "FAILED";
         await prisma.emailDelivery.update({
@@ -126,7 +148,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         failCount++;
         const emailKey = findEmailKey(row);
         const email = emailKey ? (row[emailKey]?.trim() ?? "(unknown)") : "(unknown)";
-        errors.push({ email, reason: "처리 중 오류가 발생했습니다." });
+        const reason = e instanceof Error ? e.message : String(e);
+        errors.push({ email, reason });
         console.error("[send] sendOne 예외:", e);
       }
     };

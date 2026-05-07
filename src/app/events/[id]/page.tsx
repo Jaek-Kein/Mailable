@@ -6,6 +6,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { useParams, useRouter } from "next/navigation";
 import { theme } from "@/src/styles/theme";
 import EditEventModal from "@/src/components/EditEventModal";
+import QrScannerTab from "@/src/components/QrScannerTab";
 import { useSheetStore } from "@/src/store/useSheetsStore";
 
 interface EventData {
@@ -1320,7 +1321,7 @@ export default function EventDetailPage() {
     const [modalOpen, setModalOpen] = useState(false);
     const [editModalOpen, setEditModalOpen] = useState(false);
     const [sendResult, setSendResult] = useState<{ sentCount: number; failCount: number; total: number; errors: { email: string; reason: string }[] } | null>(null);
-    const [activeTab, setActiveTab] = useState<"email" | "checkin">("email");
+    const [activeTab, setActiveTab] = useState<"email" | "checkin" | "qrscan">("email");
     const [checkinMap, setCheckinMap] = useState<Record<string, string | null>>({});
     const [cancelledRids, setCancelledRids] = useState<Set<string>>(new Set());
     const [showCancelled, setShowCancelled] = useState(false);
@@ -1669,6 +1670,9 @@ export default function EventDetailPage() {
                         </span>
                     )}
                 </Tab>
+                <Tab active={activeTab === "qrscan"} onClick={() => setActiveTab("qrscan")}>
+                    QR 입장
+                </Tab>
             </TabBar>
 
             {activeTab === "email" && (
@@ -1684,8 +1688,21 @@ export default function EventDetailPage() {
             </>
             )}
 
+            {/* QR 입장 탭 */}
+            {activeTab === "qrscan" && (
+                <Card>
+                    <SectionTitle>QR 입장 스캔</SectionTitle>
+                    <QrScannerTab
+                        eventId={id}
+                        onCheckinMapChange={(rid, at) =>
+                            setCheckinMap((prev) => ({ ...prev, [rid]: at }))
+                        }
+                    />
+                </Card>
+            )}
+
             {/* 참가자 데이터 / 입장 체크 */}
-            <Card>
+            {activeTab !== "qrscan" && <Card>
                 <Toolbar>
                     <SectionTitle style={{ margin: 0 }}>
                         {activeTab === "checkin" ? "입장 체크" : "참가자 데이터"}{" "}
@@ -2040,7 +2057,7 @@ export default function EventDetailPage() {
                         </DesktopTable>
                     </>
                 )}
-            </Card>
+            </Card>}
 
             {/* 행사 정보 수정 모달 */}
             {editModalOpen && (
