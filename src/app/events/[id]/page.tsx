@@ -1178,9 +1178,10 @@ interface TemplateEditorProps {
     initialContent: string;
     hasTemplate: boolean;
     onSaved: (subject: string, content: string) => void;
+    sampleRow?: Record<string, string>;
 }
 
-const TemplateEditor = memo(function TemplateEditor({ eventId, initialSubject, initialContent, hasTemplate, onSaved }: TemplateEditorProps) {
+const TemplateEditor = memo(function TemplateEditor({ eventId, initialSubject, initialContent, hasTemplate, onSaved, sampleRow }: TemplateEditorProps) {
     const [subject, setSubject] = useState(initialSubject);
     const [content, setContent] = useState(initialContent);
     const [saving, setSaving] = useState(false);
@@ -1237,9 +1238,72 @@ const TemplateEditor = memo(function TemplateEditor({ eventId, initialSubject, i
                 />
             </TemplateField>
             <PlaceholderHint>
-                플레이스홀더: <code style={{ background: C.paper, padding: "1px 5px", borderRadius: 4, fontSize: "0.82em" }}>{"{{컬럼명}}"}</code> 형식으로 참가자 데이터가 치환됩니다.
-                기본 제공: <code style={{ background: C.paper, padding: "1px 5px", borderRadius: 4, fontSize: "0.82em" }}>{"{{행사명}}"}</code>
+                <code style={{ background: C.paper, padding: "1px 5px", borderRadius: 4, fontSize: "0.82em" }}>{"{{컬럼명}}"}</code> 형식으로 참가자 데이터가 자동 치환됩니다.
             </PlaceholderHint>
+            {/* 사용 가능한 플레이스홀더 칩 목록 */}
+            {(() => {
+                const builtIn = [
+                    { key: "행사명", desc: "행사 제목" },
+                    { key: "qr_image", desc: "QR 체크인 이미지" },
+                ];
+                const dataKeys = sampleRow
+                    ? Object.keys(sampleRow).filter((k) => k !== "_rid")
+                    : [];
+                const allKeys = [
+                    ...builtIn,
+                    ...dataKeys.map((k) => ({ key: k, desc: undefined })),
+                ];
+                return (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem", marginTop: "0.1rem" }}>
+                        {allKeys.map(({ key, desc }) => (
+                            <button
+                                key={key}
+                                type="button"
+                                title={desc ?? `참가자 데이터: ${key}`}
+                                onClick={() => {
+                                    const tag = `{{${key}}}`;
+                                    const ta = document.getElementById("email-content") as HTMLTextAreaElement | null;
+                                    if (ta) {
+                                        const start = ta.selectionStart;
+                                        const end = ta.selectionEnd;
+                                        const next = ta.value.slice(0, start) + tag + ta.value.slice(end);
+                                        setContent(next);
+                                        requestAnimationFrame(() => {
+                                            ta.focus();
+                                            ta.setSelectionRange(start + tag.length, start + tag.length);
+                                        });
+                                    } else {
+                                        setContent((prev) => prev + tag);
+                                    }
+                                }}
+                                style={{
+                                    appearance: "none",
+                                    background: C.paper,
+                                    border: `1px solid ${C.border}`,
+                                    borderRadius: "999px",
+                                    padding: "2px 10px",
+                                    fontSize: "0.78rem",
+                                    color: C.inkSoft,
+                                    cursor: "pointer",
+                                    fontFamily: "monospace",
+                                    lineHeight: 1.6,
+                                    transition: "background 0.12s, border-color 0.12s",
+                                }}
+                                onMouseEnter={(e) => {
+                                    (e.currentTarget as HTMLButtonElement).style.borderColor = C.accent;
+                                    (e.currentTarget as HTMLButtonElement).style.color = C.accent;
+                                }}
+                                onMouseLeave={(e) => {
+                                    (e.currentTarget as HTMLButtonElement).style.borderColor = C.border;
+                                    (e.currentTarget as HTMLButtonElement).style.color = C.inkSoft;
+                                }}
+                            >
+                                {`{{${key}}}`}
+                            </button>
+                        ))}
+                    </div>
+                );
+            })()}
         </Card>
     );
 });
@@ -1684,6 +1748,7 @@ export default function EventDetailPage() {
                 initialContent={event.emailContent ?? ""}
                 hasTemplate={hasTemplate}
                 onSaved={(s, c) => setEvent((prev) => prev ? { ...prev, emailSubject: s, emailContent: c } : prev)}
+                sampleRow={localRows[0]}
             />
             </>
             )}

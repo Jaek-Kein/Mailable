@@ -1,20 +1,59 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
 import styled from "@emotion/styled";
+import { keyframes } from "@emotion/react";
 import { theme } from "@/src/styles/theme";
 
 const C = {
   ink: theme.color.text,
   inkMuted: theme.color.muted,
-  inkSoft: theme.color.sub,
   border: theme.color.border,
-  card: theme.color.card,
   accent: theme.color.accent,
   accentLight: theme.color.accentLight,
 } as const;
 
+/* ── Toast ── */
+const toastIn = keyframes`
+  from { opacity: 0; transform: translateY(-12px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+`;
+const toastOut = keyframes`
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateY(-8px) scale(0.97); }
+`;
+
+const ToastPortal = styled.div`
+  position: fixed;
+  top: 1.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  pointer-events: none;
+`;
+
+const Toast = styled.div<{ type: "success" | "already" | "error" | "invalid"; leaving: boolean }>`
+  padding: 0.7rem 1.25rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-family: var(--font-sans, sans-serif);
+  font-weight: 500;
+  white-space: nowrap;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  animation: ${({ leaving }) => leaving ? toastOut : toastIn} 0.22s ease forwards;
+
+  background: ${({ type }) =>
+    type === "success" ? "#15803d" :
+    type === "already" ? "#92400e" : "#991b1b"};
+  color: #fff;
+`;
+
+/* ── Layout ── */
 const Wrap = styled.div`
   display: flex;
   flex-direction: column;
@@ -39,30 +78,6 @@ const Video = styled.video`
   height: 100%;
   object-fit: cover;
   display: block;
-`;
-
-const ScanLine = styled.div<{ scanning: boolean }>`
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  &::after {
-    content: "";
-    display: ${({ scanning }) => scanning ? "block" : "none"};
-    position: absolute;
-    left: 10%;
-    right: 10%;
-    height: 2px;
-    background: ${C.accent};
-    opacity: 0.85;
-    border-radius: 1px;
-    animation: scanMove 1.8s ease-in-out infinite;
-    box-shadow: 0 0 8px ${C.accent};
-  }
-  @keyframes scanMove {
-    0%   { top: 10%; }
-    50%  { top: 88%; }
-    100% { top: 10%; }
-  }
 `;
 
 const Corner = styled.div`
@@ -90,33 +105,6 @@ const Corner = styled.div`
   }
 `;
 
-const ResultBox = styled.div<{ type: "success" | "already" | "error" | "invalid" }>`
-  width: 100%;
-  max-width: 360px;
-  border-radius: 10px;
-  padding: 1rem 1.25rem;
-  font-size: 0.9rem;
-  line-height: 1.5;
-  background: ${({ type }) =>
-    type === "success" ? "#f0fdf4" :
-    type === "already" ? "#fffbeb" : "#fef2f2"};
-  border: 1px solid ${({ type }) =>
-    type === "success" ? "#86efac" :
-    type === "already" ? "#fcd34d" : "#fca5a5"};
-  color: ${({ type }) =>
-    type === "success" ? "#15803d" :
-    type === "already" ? "#92400e" : "#991b1b"};
-  display: flex;
-  align-items: flex-start;
-  gap: 0.6rem;
-`;
-
-const Icon = styled.span`
-  font-size: 1.3rem;
-  line-height: 1;
-  flex-shrink: 0;
-`;
-
 const StatusLabel = styled.div`
   font-size: 0.82rem;
   color: ${C.inkMuted};
@@ -140,39 +128,70 @@ const Btn = styled.button`
   &:disabled { opacity: 0.45; cursor: not-allowed; }
 `;
 
+/* ── Types ── */
 type ScanResult =
   | { type: "success"; name: string; at: string }
   | { type: "already"; at: string }
   | { type: "invalid" }
   | { type: "error" };
 
+interface ToastItem {
+  id: number;
+  result: ScanResult;
+  leaving: boolean;
+}
+
 interface Props {
   eventId: string;
   onCheckinMapChange?: (rid: string, at: string) => void;
 }
 
+let toastId = 0;
+
 export default function QrScannerTab({ eventId, onCheckinMapChange }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const readerRef = useRef<BrowserMultiFormatReader | null>(null);
   const processingRef = useRef(false);
   const [scanning, setScanning] = useState(false);
   const [status, setStatus] = useState<string>("카메라 준비 중...");
-  const [result, setResult] = useState<ScanResult | null>(null);
   const [lastToken, setLastToken] = useState<string>("");
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+
+  const pushToast = useCallback((result: ScanResult) => {
+    const id = ++toastId;
+    setToasts((prev) => [...prev, { id, result, leaving: false }]);
+
+    // 2.5초 후 leave 애니메이션
+    setTimeout(() => {
+      setToasts((prev) => prev.map((t) => t.id === id ? { ...t, leaving: true } : t));
+    }, 2500);
+    // 2.75초 후 제거
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 2750);
+  }, []);
+
+  const toastLabel = (r: ScanResult): string => {
+    if (r.type === "success") return `✅ 체크인 완료${r.name ? ` — ${r.name}님` : ""}`;
+    if (r.type === "already") return "⚠️ 이미 체크인된 참가자";
+    if (r.type === "invalid") return "❌ 유효하지 않은 QR";
+    return "❌ 처리 중 오류";
+  };
 
   const startScanner = () => {
-    setResult(null);
     setLastToken("");
     processingRef.current = false;
     setScanning(true);
+  };
+
+  const stopScanner = () => {
+    BrowserMultiFormatReader.releaseAllStreams();
+    setScanning(false);
   };
 
   useEffect(() => {
     if (!scanning) return;
 
     const reader = new BrowserMultiFormatReader();
-    readerRef.current = reader;
-
     setStatus("QR 코드를 카메라에 비춰주세요");
 
     reader
@@ -181,43 +200,44 @@ export default function QrScannerTab({ eventId, onCheckinMapChange }: Props) {
         if (err) return;
 
         const text = res.getText();
-
-        // 체크인 URL에서 토큰 추출
         const match = text.match(/\/api\/checkin\/([^/?#]+)/);
         if (!match) return;
 
         const token = match[1];
-        if (token === lastToken) return; // 동일 QR 연속 스캔 무시
+        if (token === lastToken) return;
 
         processingRef.current = true;
         setLastToken(token);
         setStatus("처리 중...");
 
+        let result: ScanResult;
         try {
-          const res2 = await fetch(`/api/checkin/${token}/process`, {
+          const resp = await fetch(`/api/checkin/${token}/process`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ eventId }),
           });
-          const data = await res2.json();
+          const data = await resp.json();
 
           if (data.status === "success") {
-            setResult({ type: "success", name: data.name ?? "", at: data.at ?? "" });
+            result = { type: "success", name: data.name ?? "", at: data.at ?? "" };
             if (data.rid && data.at && onCheckinMapChange) {
               onCheckinMapChange(data.rid, data.at);
             }
           } else if (data.status === "already") {
-            setResult({ type: "already", at: data.at ?? "" });
+            result = { type: "already", at: data.at ?? "" };
           } else if (data.status === "invalid") {
-            setResult({ type: "invalid" });
+            result = { type: "invalid" };
           } else {
-            setResult({ type: "error" });
+            result = { type: "error" };
           }
         } catch {
-          setResult({ type: "error" });
+          result = { type: "error" };
         }
 
-        setScanning(false);
+        pushToast(result);
+        setStatus("QR 코드를 카메라에 비춰주세요");
+        processingRef.current = false;
       })
       .catch(() => {
         setStatus("카메라 접근에 실패했습니다. 권한을 확인해주세요.");
@@ -226,54 +246,36 @@ export default function QrScannerTab({ eventId, onCheckinMapChange }: Props) {
 
     return () => {
       BrowserMultiFormatReader.releaseAllStreams();
-      readerRef.current = null;
     };
-  }, [scanning, lastToken, eventId, onCheckinMapChange]);
+  }, [scanning, lastToken, eventId, onCheckinMapChange, pushToast]);
 
   return (
-    <Wrap>
-      <VideoBox style={{ display: scanning ? "block" : "none" }}>
-        <Video ref={videoRef} />
-        <ScanLine scanning={scanning} />
-        <Corner />
-      </VideoBox>
+    <>
+      {/* 토스트 포털 */}
+      <ToastPortal>
+        {toasts.map((t) => (
+          <Toast key={t.id} type={t.result.type} leaving={t.leaving}>
+            {toastLabel(t.result)}
+          </Toast>
+        ))}
+      </ToastPortal>
 
-      {!scanning && (
-        <Btn onClick={startScanner}>카메라로 QR 스캔</Btn>
-      )}
-
-      {scanning && (
-        <StatusLabel>{status}</StatusLabel>
-      )}
-
-      {result && (
-        <>
-          <ResultBox type={result.type}>
-            <Icon>
-              {result.type === "success" ? "✅" :
-               result.type === "already" ? "⚠️" : "❌"}
-            </Icon>
-            <div>
-              {result.type === "success" && (
-                <>
-                  <strong>체크인 완료</strong>
-                  {result.name && <> — {result.name}님</>}
-                  {result.at && <div style={{ fontSize: "0.8rem", marginTop: "0.2rem", opacity: 0.8 }}>{result.at}</div>}
-                </>
-              )}
-              {result.type === "already" && (
-                <>
-                  <strong>이미 체크인된 참가자</strong>
-                  {result.at && <div style={{ fontSize: "0.8rem", marginTop: "0.2rem", opacity: 0.8 }}>체크인 시각: {result.at}</div>}
-                </>
-              )}
-              {result.type === "invalid" && <strong>유효하지 않은 QR 코드</strong>}
-              {result.type === "error" && <strong>처리 중 오류가 발생했습니다</strong>}
-            </div>
-          </ResultBox>
-          <Btn onClick={startScanner}>다음 QR 스캔</Btn>
-        </>
-      )}
-    </Wrap>
+      <Wrap>
+        {scanning ? (
+          <>
+            <VideoBox>
+              <Video ref={videoRef} />
+              <Corner />
+            </VideoBox>
+            <StatusLabel>{status}</StatusLabel>
+            <Btn onClick={stopScanner} style={{ background: "transparent", color: C.ink, border: `1px solid ${C.border}` }}>
+              스캔 중지
+            </Btn>
+          </>
+        ) : (
+          <Btn onClick={startScanner}>카메라로 QR 스캔</Btn>
+        )}
+      </Wrap>
+    </>
   );
 }
